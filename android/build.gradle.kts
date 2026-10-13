@@ -28,13 +28,13 @@ android {
     }
     defaultConfig {
         namespace = BuildConfig.identifier
-        applicationId = BuildConfig.identifier
+        applicationId = "com.livingempires.app"
         minSdk = 21
         targetSdk = 36
         versionCode = BuildConfig.appCodeNumber
         versionName = BuildConfig.appVersion
 
-        base.archivesName.set("Unciv")
+        base.archivesName.set("LivingEmpires")
     }
 
     // Had to add this crap for Travis to build, it wanted to sign the app
