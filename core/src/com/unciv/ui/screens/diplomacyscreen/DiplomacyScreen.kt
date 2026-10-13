@@ -319,9 +319,11 @@ class DiplomacyScreen(
     ): TextButton {
         val declareWarButton = "Declare war".toTextButton(skin.get("negative", TextButton.TextButtonStyle::class.java))
         val turnsToPeaceTreaty = diplomacyManager.turnsToPeaceTreaty()
-        if (turnsToPeaceTreaty > 0) {
+        val turnsToNonAggressionPact = diplomacyManager.turnsToNonAggressionPact()
+        if (turnsToPeaceTreaty > 0 || turnsToNonAggressionPact > 0) {
             declareWarButton.disable()
-            declareWarButton.setText(declareWarButton.text.toString() + " (${turnsToPeaceTreaty.tr()}${Fonts.turn})")
+            val remainingTurns = maxOf(turnsToPeaceTreaty, turnsToNonAggressionPact)
+            declareWarButton.setText(declareWarButton.text.toString() + " (${remainingTurns.tr()}${Fonts.turn})")
         }
         declareWarButton.onClick {
             ConfirmPopup(this, getDeclareWarButtonText(otherCiv), "Declare war") {

@@ -308,8 +308,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun turnsToNonAggressionPact(): Int = trades.asSequence()
-        .flatMap { it.ourOffers.asSequence() }
-        .filter { it.name == LivingEmpiresTreaties.nonAggressionPact }
+        .flatMap { (it.ourOffers + it.theirOffers).asSequence() }
+        .filter { it.type == TradeOfferType.Treaty && it.name == LivingEmpiresTreaties.nonAggressionPact }
         .maxOfOrNull { it.duration }?.coerceAtLeast(0) ?: 0
 
     /**
