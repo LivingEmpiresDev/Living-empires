@@ -8,6 +8,7 @@ import com.unciv.logic.civilization.PopupAlert
 import com.unciv.logic.civilization.diplomacy.DeclareWarReason
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.logic.civilization.diplomacy.DiplomacyManager
+import com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties
 import com.unciv.logic.civilization.diplomacy.DiplomaticModifiers
 import com.unciv.logic.civilization.diplomacy.WarType
 import com.unciv.models.ruleset.tile.ResourceType
@@ -53,6 +54,13 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
         if (civInfo.diplomacyFunctions.canSignResearchAgreementNoCostWith(otherCiv))
             offers.add(TradeOffer(Constants.researchAgreement, TradeOfferType.Treaty,
                 civInfo.diplomacyFunctions.getResearchAgreementCost(otherCiv), civInfo.gameInfo.speed))
+
+        // A fixed 20-turn mutual treaty, available only while at peace and not already active.
+        if (!civInfo.isAtWarWith(otherCiv)
+            && civInfo.getDiplomacyManager(otherCiv)!!.turnsToNonAggressionPact() == 0) {
+            offers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty,
+                duration = LivingEmpiresTreaties.duration))
+        }
 
         if (civInfo.diplomacyFunctions.canSignDefensivePactWith(otherCiv))
             offers.add(TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, speed = civInfo.gameInfo.speed))
