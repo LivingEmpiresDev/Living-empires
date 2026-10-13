@@ -46,6 +46,17 @@ object DiplomacyTurnManager {
                     val otherCivTrades = otherCiv.getDiplomacyManager(civInfo)!!.trades
                     otherCivTrades.removeAll { it.equalTrade(trade.reverse()) }
 
+                    // Preserve Living Empires pacts even if a resource trade fails.
+                    val pact = trade.theirOffers.firstOrNull {
+                        it.name == LivingEmpiresTreaties.nonAggressionPact && it.duration > 0
+                    }
+                    if (pact != null) {
+                        val restored = com.unciv.logic.trade.Trade()
+                        restored.ourOffers.add(com.unciv.logic.trade.TradeOffer(pact.name, TradeOfferType.Treaty, duration = pact.duration))
+                        restored.theirOffers.add(com.unciv.logic.trade.TradeOffer(pact.name, TradeOfferType.Treaty, duration = pact.duration))
+                        trades.add(restored)
+                        otherCiv.getDiplomacyManager(civInfo)!!.trades.add(restored.reverse())
+                    }
                     // Can't cut short peace treaties!
                     if (trade.theirOffers.any { it.name == Constants.peaceTreaty }) {
                         remakePeaceTreaty(trade.theirOffers.first { it.name == Constants.peaceTreaty }.duration)

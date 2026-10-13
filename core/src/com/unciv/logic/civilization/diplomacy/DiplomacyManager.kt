@@ -306,6 +306,12 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return 0
     }
 
+    @Readonly
+    fun turnsToNonAggressionPact(): Int = trades.asSequence()
+        .flatMap { it.ourOffers.asSequence() }
+        .filter { it.name == LivingEmpiresTreaties.nonAggressionPact }
+        .maxOfOrNull { it.duration }?.coerceAtLeast(0) ?: 0
+
     /**
      * Reflects how we perceive the other civ, and affects willingness to trade, declare war, etc..
      * The other civ can view this number in the diplimacy screen.
@@ -526,13 +532,16 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
     @Readonly
     fun canDeclareWar() = !civInfo.isDefeated() && !otherCiv.isDefeated()
-            && turnsToPeaceTreaty() == 0 && diplomaticStatus != DiplomaticStatus.War
+            && turnsToPeaceTreaty() == 0 && turnsToNonAggressionPact() == 0 && diplomaticStatus != DiplomaticStatus.War
 
-    fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) =
+    fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) {
+        // Protect direct declarations; forced alliance wars still use existing Unciv rules.
+        if (declareWarReason.warType == WarType.DirectWar && turnsToNonAggressionPact() > 0) return
         DeclareWar.declareWar(this, declareWarReason)
+    }
 
     //Used for nuke
-    @Readonly fun canAttack() = turnsToPeaceTreaty() == 0
+    @Readonly fun canAttack() = turnsToPeaceTreaty() == 0 && turnsToNonAggressionPact() == 0
 
     @Readonly
     fun goldPerTurn(): Int {
