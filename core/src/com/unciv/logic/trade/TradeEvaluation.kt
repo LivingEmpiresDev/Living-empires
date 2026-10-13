@@ -387,6 +387,8 @@ class TradeEvaluation {
                     Constants.defensivePact -> if (DiplomacyAutomation.wantsToSignDefensivePact(civInfo, tradePartner)) 0
                         else 100000
                     Constants.researchAgreement -> -offer.amount
+                    // A mutual non-aggression pact has no gold cost to either signatory.
+                    LivingEmpiresTreaties.nonAggressionPact -> 0
                     else -> 1000
                     //Todo:AddDefensiveTreatyHere
                 }
