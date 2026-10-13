@@ -59,4 +59,11 @@ jobs:
           if ! grep -al "AndroidLauncher" /tmp/apk-check/classes*.dex > /dev/null; then
             echo "::error::AndroidLauncher class missing from APK dex - Kotlin sources in :android module were not compiled!"
             exit 1
-          fi
+          fi         
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: living-empires-debug-apk
+          path: android/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+ 
