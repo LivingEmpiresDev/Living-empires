@@ -6,6 +6,7 @@ import com.unciv.logic.automation.civilization.MotivationToAttackAutomation
 import com.unciv.logic.automation.civilization.DeclareWarPlanEvaluator
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
+import com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.logic.civilization.diplomacy.DiplomaticModifiers
 import com.unciv.logic.civilization.diplomacy.RelationshipLevel
@@ -84,6 +85,8 @@ class TradeEvaluation {
                     Constants.peaceTreaty -> offerer.isAtWarWith(tradePartner)
                     Constants.researchAgreement -> !offerer.getDiplomacyManager(tradePartner)!!.hasFlag(DiplomacyFlags.ResearchAgreement)
                     Constants.defensivePact -> !offerer.getDiplomacyManager(tradePartner)!!.hasFlag(DiplomacyFlags.DefensivePact)
+                    LivingEmpiresTreaties.nonAggressionPact -> !offerer.isAtWarWith(tradePartner)
+                        && offerer.getDiplomacyManager(tradePartner)!!.turnsToNonAggressionPact() == 0
                     else -> true // potentional future treaties
                 }
             }
@@ -172,6 +175,7 @@ class TradeEvaluation {
                     // Since it will be evaluated twice, once when they evaluate our offer and once when they evaluate theirs
                     Constants.peaceTreaty -> evaluatePeaceCostForThem(civInfo, tradePartner)
                     Constants.defensivePact -> 0
+                    LivingEmpiresTreaties.nonAggressionPact -> 0
                     Constants.researchAgreement -> -offer.amount
                     else -> 1000
                 }
