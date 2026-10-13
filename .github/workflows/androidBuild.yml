@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - 'stage-2/non-aggression-pact'
+      - 'stage-3/alliances-coordinated-wars'
     paths:
       - 'core/**'
       - 'android/**'
