@@ -535,8 +535,10 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
             && turnsToPeaceTreaty() == 0 && turnsToNonAggressionPact() == 0 && diplomaticStatus != DiplomaticStatus.War
 
     fun declareWar(declareWarReason: DeclareWarReason = DeclareWarReason(WarType.DirectWar)) {
-        // Protect direct declarations; forced alliance wars still use existing Unciv rules.
-        if (declareWarReason.warType == WarType.DirectWar && turnsToNonAggressionPact() > 0) return
+        // Voluntary wars cannot bypass an active peace or non-aggression treaty
+        // through joint-war and join-war trade proposals.
+        if (declareWarReason.warType in listOf(WarType.DirectWar, WarType.TeamWar, WarType.JoinWar)
+            && (turnsToPeaceTreaty() > 0 || turnsToNonAggressionPact() > 0)) return
         DeclareWar.declareWar(this, declareWarReason)
     }
 
