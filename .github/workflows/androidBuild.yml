@@ -7,7 +7,11 @@ name: Android build
 on:
   workflow_dispatch:
   push:
+    branches:
+      - 'stage-2/non-aggression-pact'
     paths:
+      - 'core/**'
+      - 'android/**'
       - 'build.gradle.kts'
       - 'gradle-wrapper.properties'
       - 'gradle/libs.versions.toml'
