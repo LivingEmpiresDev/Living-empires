@@ -138,12 +138,15 @@ class TradeEvaluation {
             if (relationshipLevel == RelationshipLevel.Enemy) sumOfOurOffers = (sumOfOurOffers * 1.5).toLong()
             else if (relationshipLevel == RelationshipLevel.Unforgivable) sumOfOurOffers *= 2
         }
-        if (trade.ourOffers.firstOrNull { it.name == Constants.defensivePact } != null) {
-            if (relationshipLevel == RelationshipLevel.Ally) {
-                //todo: Add more in depth evaluation here
-            } else {
+        // Defensive pacts require an established friendship, but the AI's own
+        // relationship can differ from the player's displayed opinion. Evaluate
+        // the AI's opinion and existing declaration instead of hard-rejecting
+        // every offer that is not classified exactly as Ally.
+        if (trade.ourOffers.any { it.name == Constants.defensivePact }) {
+            val diplomacy = evaluator.getDiplomacyManager(tradePartner)!!
+            if (!diplomacy.hasFlag(DiplomacyFlags.DeclarationOfFriendship)
+                || diplomacy.opinionOfOtherCiv() < 65f)
                 return Int.MIN_VALUE
-            }
         }
         val diplomaticGifts: Int = if (includeDiplomaticGifts) evaluator.getDiplomacyManager(tradePartner)!!.getGoldGifts() else 0
         return (sumOfTheirOffers - sumOfOurOffers + diplomaticGifts)
@@ -384,8 +387,10 @@ class TradeEvaluation {
                 return when (offer.name) {
                     // Since it will be evaluated twice, once when they evaluate our offer and once when they evaluate theirs
                     Constants.peaceTreaty -> evaluatePeaceCostForThem(civInfo, tradePartner)
+                    // Reluctance has a negotiable price; do not make an otherwise
+                    // valid pact impossible even with a generous offer.
                     Constants.defensivePact -> if (DiplomacyAutomation.wantsToSignDefensivePact(civInfo, tradePartner)) 0
-                        else 100000
+                        else 500
                     Constants.researchAgreement -> -offer.amount
                     // A mutual non-aggression pact has no gold cost to either signatory.
                     LivingEmpiresTreaties.nonAggressionPact -> 0
