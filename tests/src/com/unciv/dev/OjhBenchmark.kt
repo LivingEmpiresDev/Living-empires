@@ -190,6 +190,24 @@ object OjhBenchmark {
                             }
                     }.toMap()
                 }
+                // Deterministic defensive intervention regression using three real AI civilizations.
+                // A-B alliance: attack B, A must intervene. A's offensive war must not pull B in.
+                if (index == 1) {
+                    val trio = simulation.civilizations.filter { it.isMajorCiv() }.take(3)
+                    check(trio.size == 3) { "Defensive intervention test needs three major civilizations" }
+                    val defender = trio[0]
+                    val ally = trio[1]
+                    val attacker = trio[2]
+                    for (a in trio) for (b in trio) {
+                        if (a != b && !a.knows(b)) a.diplomacyFunctions.makeCivilizationsMeet(b, true)
+                    }
+                    defender.getDiplomacyManager(ally)!!.signDefensivePact(20)
+                    check(!ally.isAtWarWith(attacker))
+                    attacker.getDiplomacyManager(defender)!!.declareWar()
+                    check(defender.isAtWarWith(attacker)) { "Attacker did not enter war with defender" }
+                    check(ally.isAtWarWith(attacker)) { "Defensive ally failed to intervene when defender was attacked" }
+                    say("INTERVENTION_CHECK defensiveAllyJoined=true")
+                }
                 var previous = snapshot()
                 var pactDurationViolations = 0
                 var expiredPacts = 0
