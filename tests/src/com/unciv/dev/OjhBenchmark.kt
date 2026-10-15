@@ -118,6 +118,7 @@ object OjhBenchmark {
             ?: throw IllegalArgumentException("the first argument is the mode: turns or fps")
         require(mode == "turns" || mode == "fps" || mode == "simulate") { "unknown mode $mode" }
         var turns = 100
+        var games = 1
         var seconds = 5.0
         var lateTurns = 20
         var players = 8
@@ -130,6 +131,7 @@ object OjhBenchmark {
             val value = { args.getOrNull(i + 1) ?: throw IllegalArgumentException("${args[i]} needs a value") }
             when (args[i]) {
                 "--turns" -> { turns = value().toInt(); i++ }
+                "--games" -> { games = value().toInt(); i++ }
                 "--players" -> { players = value().toInt(); i++ }
                 "--size" -> { size = value(); i++ }
                 "--map" -> { mapPath = value(); i++ }
@@ -141,6 +143,7 @@ object OjhBenchmark {
             i++
         }
         require(turns > 0) { "--turns must be at least 1" }
+        require(games in 1..100) { "--games must be between 1 and 100" }
         require(players >= 2) { "--players must be at least 2" }
 
         if (mode == "fps") {
@@ -167,13 +170,25 @@ object OjhBenchmark {
         val bootSeconds = (System.nanoTime() - bootStart) / 1e9
 
         if (mode == "simulate") {
-            val result = GameSimulationRunner.run(info, turns)
-            say("SIMULATION start=${result.startingTurn} end=${result.endingTurn} requested=${result.requestedTurns} completed=${result.completed}")
-            result.civilizations.forEach { civ ->
-                say("CIV name=${civ.name} alive=${civ.alive} cities=${civ.cities} won=${civ.won}")
+            var completed = 0
+            var totalWars = 0
+            var totalPacts = 0
+            var totalTrades = 0
+            for (index in 1..games) {
+                val simulation = if (index == 1) info else start(players, size, mapPath, seed + index - 1L)
+                val result = GameSimulationRunner.run(simulation, turns)
+                say("SIMULATION game=$index start=${result.startingTurn} end=${result.endingTurn} requested=${result.requestedTurns} completed=${result.completed} wars=${result.activeWars} defensivePacts=${result.activeDefensivePacts} nonAggressionPacts=${result.activeNonAggressionPacts} trades=${result.activeTrades}")
+                result.civilizations.forEach { civ ->
+                    say("CIV game=$index name=${civ.name} alive=${civ.alive} cities=${civ.cities} won=${civ.won}")
+                }
+                if (result.completed) completed++
+                totalWars += result.activeWars
+                totalPacts += result.activeDefensivePacts
+                totalTrades += result.activeTrades
             }
+            say("SUMMARY games=$games completed=$completed warsAtEnd=$totalWars defensivePactsAtEnd=$totalPacts tradesAtEnd=$totalTrades")
             System.out.flush()
-            exitProcess(0)
+            exitProcess(if (completed == games) 0 else 1)
         }
 
         say("OJH players ${info.civilizations.count { it.playerType == PlayerType.AI && !it.isBarbarian }}")
