@@ -41,6 +41,22 @@ class DefensivePactTests {
     }
 
     @Test
+    fun `Enemy attacking pact member automatically brings defensive ally into war`() {
+        meetAll()
+        // a is the player under attack, b is their defensive ally, c is the aggressor.
+        a.getDiplomacyManager(b)!!.signDefensivePact(20)
+        Assert.assertFalse(a.isAtWarWith(c))
+        Assert.assertFalse(b.isAtWarWith(c))
+
+        c.getDiplomacyManager(a)!!.declareWar()
+
+        Assert.assertTrue("The attacked civilization must be at war with the aggressor", a.isAtWarWith(c))
+        Assert.assertTrue("The defensive ally must automatically join against the aggressor", b.isAtWarWith(c))
+        Assert.assertTrue("War must be reciprocal", c.isAtWarWith(b))
+        Assert.assertFalse("Defensive allies must not fight each other", a.isAtWarWith(b))
+    }
+
+    @Test
     fun `Defensive Pact cancel when attacking`() {
         meetAll()
         a.getDiplomacyManager(b)!!.signDefensivePact(100)
