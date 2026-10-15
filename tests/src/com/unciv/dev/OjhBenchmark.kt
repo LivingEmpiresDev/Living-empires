@@ -246,7 +246,12 @@ object OjhBenchmark {
                             expiredPacts++
                             say("PACT_END game=$index turn=${simulation.turns} pair=$pair previous=$oldTurns state=${after ?: "unknown"}")
                         }
-                        if (oldTurns > 0 && pactTurns > 0 && pactTurns != oldTurns - 1 && pactTurns != 20) {
+                        val pairCivs = simulation.civilizations.filter { it.isMajorCiv() && pair.split("/").contains(it.civName) }
+                        val bothAlive = pairCivs.size == 2 && pairCivs.all { !it.isDefeated() }
+                        if (!bothAlive && oldTurns > 0 && pactTurns == oldTurns) {
+                            say("PACT_FROZEN_DEFEATED game=$index turn=${simulation.turns} pair=$pair remaining=$pactTurns")
+                        }
+                        if (bothAlive && oldTurns > 0 && pactTurns > 0 && pactTurns != oldTurns - 1 && pactTurns != 20) {
                             brokenCountdowns++
                             say("PACT_COUNTDOWN_ERROR game=$index turn=${simulation.turns} pair=$pair before=$oldTurns after=$pactTurns")
                         }
