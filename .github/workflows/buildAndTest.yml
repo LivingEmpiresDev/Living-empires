@@ -5,6 +5,7 @@ on:
   # Triggers the workflow on any push or pull request
   push:
   workflow_dispatch:
+  # Stage 2 simulation audit: a branch push runs compilation and unit checks.
   pull_request_target:
 
 env:
