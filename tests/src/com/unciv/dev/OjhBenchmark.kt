@@ -9,6 +9,7 @@ import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
 import com.unciv.logic.GameSimulationRunner
+import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.logic.GameStarter
 import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.files.MapSaver
@@ -176,7 +177,35 @@ object OjhBenchmark {
             var totalTrades = 0
             for (index in 1..games) {
                 val simulation = if (index == 1) info else start(players, size, mapPath, seed + index - 1L)
-                val result = GameSimulationRunner.run(simulation, turns)
+                // Sample bilateral diplomacy after every world turn, not only at the end.
+                // Use the normal AI engine for each step, and compare consecutive snapshots.
+                fun snapshot(): Map<String, String> {
+                    val majors = simulation.civilizations.filter { it.isMajorCiv() }
+                    return majors.flatMap { civ ->
+                        civ.diplomacy.values.filter { it.otherCiv.isMajorCiv() && civ.civID < it.otherCiv.civID }
+                            .map { dip ->
+                                val key = "${civ.civName}/${dip.otherCiv.civName}"
+                                val pact = dip.getFlag(DiplomacyFlags.DefensivePact)
+                                key to "status=${dip.diplomaticStatus} pactTurns=$pact napTurns=${dip.turnsToNonAggressionPact()} trades=${dip.trades.size}"
+                            }
+                    }.toMap()
+                }
+                var previous = snapshot()
+                var result = GameSimulationRunner.run(simulation, 1)
+                for (turn in 1..turns) {
+                    if (turn > 1) result = GameSimulationRunner.run(simulation, 1)
+                    val current = snapshot()
+                    (previous.keys + current.keys).sorted().forEach { pair ->
+                        val before = previous[pair]
+                        val after = current[pair]
+                        if (before != after) say("EVENT game=$index turn=${simulation.turns} pair=$pair before=${before ?: "unknown"} after=${after ?: "unknown"}")
+                    }
+                    previous = current
+                    if (simulation.turns >= turns) break
+                }
+                // The final one-turn result reports requestedTurns=1; aggregate the
+                // actual world turn progress for this full-game summary.
+                result = result.copy(startingTurn = 0, requestedTurns = turns, completed = simulation.turns >= turns)
                 say("SIMULATION game=$index start=${result.startingTurn} end=${result.endingTurn} requested=${result.requestedTurns} completed=${result.completed} wars=${result.activeWars} defensivePacts=${result.activeDefensivePacts} nonAggressionPacts=${result.activeNonAggressionPacts} trades=${result.activeTrades}")
                 result.civilizations.forEach { civ ->
                     say("CIV game=$index name=${civ.name} alive=${civ.alive} cities=${civ.cities} won=${civ.won}")
