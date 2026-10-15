@@ -19,6 +19,7 @@ data class TradeOffer(val name: String, val type: TradeOfferType, var amount: In
     ) : this(name, type, amount, duration = -1) {
         duration = when {
             type.isImmediate -> -1 // -1 for offers that are immediate (e.g. gold transfer)
+            name == Constants.defensivePact -> 20 // Living Empires: fixed defensive pact term
             name == Constants.peaceTreaty || type == TradeOfferType.PeaceProposal -> speed.peaceDealDuration
             else -> speed.dealDuration
         }
