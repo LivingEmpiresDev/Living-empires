@@ -302,6 +302,13 @@ class DiplomacyScreen(
         }
 
         relationshipTable.add(relationshipText.toLabel(relationshipColor)).row()
+        // RelationshipLevel reflects opinion, not treaty status. Show an active
+        // defensive pact explicitly so it is visible for human-AI diplomacy.
+        val defensivePactTurns = otherCivDiplomacyManager.getFlag(DiplomacyFlags.DefensivePact)
+        if (otherCivDiplomacyManager.diplomaticStatus == DiplomaticStatus.DefensivePact && defensivePactTurns > 0) {
+            relationshipTable.add("{Defensive Pact}: ".toLabel())
+            relationshipTable.add(("$defensivePactTurns turns remaining").toLabel(Color.PURPLE)).row()
+        }
         if (otherCivDiplomacyManager.civInfo.isCityState)
             relationshipTable.add(
                 InfluenceTable(
