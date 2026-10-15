@@ -63,7 +63,7 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
         }
 
         if (civInfo.diplomacyFunctions.canSignDefensivePactWith(otherCiv))
-            offers.add(TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, speed = civInfo.gameInfo.speed))
+            offers.add(TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, duration = 20))
 
         for (entry in civInfo.getPerTurnResourcesWithOriginsForTrade()
             .filterNot { it.resource.resourceType == ResourceType.Bonus }
