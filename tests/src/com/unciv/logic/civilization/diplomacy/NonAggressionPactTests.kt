@@ -98,6 +98,20 @@ class NonAggressionPactTests {
         assertEquals(7, reversed.theirOffers.single().duration)
     }
 
+    @Test fun directAttackGateBlocksBothSidesUntilExpiry() {
+        val first = managerWithPact(true)
+        val second = managerWithPact(false)
+        for (turn in 0..20) {
+            val blocked = turn < 20
+            assertEquals("Attacker A on turn $turn", blocked, !first.canAttack())
+            assertEquals("Attacker B on turn $turn", blocked, !second.canAttack())
+            if (turn < 20) {
+                first.trades.single().ourOffers.single().duration--
+                second.trades.single().theirOffers.single().duration--
+            }
+        }
+    }
+
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
