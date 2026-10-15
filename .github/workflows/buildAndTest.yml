@@ -60,34 +60,6 @@ jobs:
           echo "$FAILURE_CONTENT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Comment test failures on PR
-        if: steps.run_checks.outputs.check_exit_code != '0' && github.event_name == 'pull_request'
-        uses: actions/github-script@v8
-        with:
-          github-token: ${{ secrets.ACTIONS_ACCESS_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const failures = fs.readFileSync('test_failures.txt', 'utf8');
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            const body = `## ❌ Test Failures Detected
-
-            The following tests failed in this PR:
-
-            \`\`\`
-            ${failures}
-            \`\`\`
-
-            [View full test output](${runUrl})
-            `;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: body
-            });
-
       - name: Fail workflow if checks failed
         if: steps.run_checks.outputs.check_exit_code != '0'
         run: exit 1
