@@ -193,6 +193,24 @@ class NonAggressionPactTests {
         }
     }
 
+    @Test fun productionTurnProcessorUnlocksAttackExactlyOnTurnTwenty() {
+        // Keep a second, unrelated timed offer active so that the trade remains
+        // present at expiry; the notification path needs a full Civilization.
+        val manager = managerWithPact(true)
+        manager.trades.single().ourOffers.add(
+            TradeOffer("stage2-unrelated-timed-offer", TradeOfferType.Treaty, duration = 30)
+        )
+        val method = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+        method.isAccessible = true
+        for (elapsed in 1..20) {
+            method.invoke(DiplomacyTurnManager, manager)
+            assertEquals("Elapsed turns: $elapsed", (20 - elapsed).coerceAtLeast(0), manager.turnsToNonAggressionPact())
+            assertEquals("Attack gate on turn $elapsed", elapsed == 20, manager.canAttack())
+        }
+        assertEquals(1, manager.trades.size)
+        assertEquals(10, manager.trades.single().ourOffers.last().duration)
+    }
+
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
