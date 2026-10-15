@@ -11,7 +11,13 @@ import org.junit.Test
 /** Stage 2 treaty regression checks. No graphics or Android device required. */
 class NonAggressionPactTests {
     private fun managerWithPact(ourSide: Boolean, duration: Int = LivingEmpiresTreaties.duration): DiplomacyManager {
-        val manager = DiplomacyManager().apply { otherCivName = "stage2-test-opponent" }
+        val manager = DiplomacyManager().apply {
+            // Deserialization sets this property reflectively; its setter is intentionally private.
+            DiplomacyManager::class.java.getDeclaredField("otherCivName").apply {
+                isAccessible = true
+                set(this@apply, "stage2-test-opponent")
+            }
+        }
         val trade = Trade()
         val offer = TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = duration)
         if (ourSide) trade.ourOffers.add(offer) else trade.theirOffers.add(offer)
