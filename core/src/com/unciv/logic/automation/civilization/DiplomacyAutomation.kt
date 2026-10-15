@@ -432,13 +432,29 @@ object DiplomacyAutomation {
             if (enemy.isMajorCiv()) {
                 var moneyWeNeedToPay = -TradeEvaluation().evaluatePeaceCostForThem(civInfo, enemy)
 
-                if (civInfo.gold > 0 && moneyWeNeedToPay > 0) {
-                    if (moneyWeNeedToPay > civInfo.gold) {
-                        moneyWeNeedToPay = PeaceNegotiationPolicy.affordableReparations(moneyWeNeedToPay, civInfo.gold)
+                if (moneyWeNeedToPay > 0) {
+                    val immediate = PeaceNegotiationPolicy.affordableReparations(moneyWeNeedToPay, civInfo.gold)
+                    if (immediate > 0)
+                        tradeLogic.currentTrade.ourOffers.add(
+                            TradeOffer(Constants.flatGold, TradeOfferType.Gold, immediate, civInfo.gameInfo.speed)
+                        )
+                    val remaining = moneyWeNeedToPay - immediate
+                    val duration = civInfo.gameInfo.speed.dealDuration
+                    val affordableGpt = civInfo.stats.statsForNextTurn.gold.toInt().coerceAtLeast(0)
+                    val gpt = if (duration > 0) ((remaining.toLong() * 5 + duration * 4L - 1) / (duration * 4L))
+                        .coerceAtMost(affordableGpt.toLong()).toInt() else 0
+                    if (gpt > 0)
+                        tradeLogic.currentTrade.ourOffers.add(
+                            TradeOffer(Constants.goldPerTurn, TradeOfferType.Gold_Per_Turn, gpt, civInfo.gameInfo.speed)
+                        )
+                    // When cash and sustainable GPT are insufficient, offer one non-capital city.
+                    if (remaining > 0 && gpt.toLong() * duration * 4 / 5 < remaining
+                        && PeaceNegotiationPolicy.canConcedeCity(civInfo.cities.size, 0)) {
+                        val concession = tradeLogic.ourAvailableOffers.firstOrNull {
+                            it.type == TradeOfferType.City && civInfo.getCapital()?.id != it.name
+                        }
+                        if (concession != null) tradeLogic.currentTrade.ourOffers.add(concession)
                     }
-                    tradeLogic.currentTrade.ourOffers.add(
-                        TradeOffer("Gold", TradeOfferType.Gold, moneyWeNeedToPay, civInfo.gameInfo.speed)
-                    )
                 } else if (moneyWeNeedToPay < -100) {
                     val moneyTheyNeedToPay = PeaceNegotiationPolicy.affordableReparations(abs(moneyWeNeedToPay), enemy.gold)
                     if (moneyTheyNeedToPay > 0) {
