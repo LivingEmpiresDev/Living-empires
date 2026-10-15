@@ -223,6 +223,35 @@ object OjhBenchmark {
                     check(aggressor.isAtWarWith(target)) { "Offensive declaration did not start a war" }
                     check(!passiveAlly.isAtWarWith(target)) { "Defensive ally incorrectly joined an offensive war" }
                     say("OFFENSIVE_WAR_CHECK defensiveAllyStayedNeutral=true")
+                    // Exercise the production save-file serializer, not GameInfo.clone().
+                    val persistenceGame = start(players, size, mapPath, seed + 200000L)
+                    val pactMembers = persistenceGame.civilizations.filter { it.isMajorCiv() }.take(2)
+                    check(pactMembers.size == 2)
+                    val pactOwner = pactMembers[0]
+                    val pactPartner = pactMembers[1]
+                    if (!pactOwner.knows(pactPartner))
+                        pactOwner.diplomacyFunctions.makeCivilizationsMeet(pactPartner, true)
+                    pactOwner.getDiplomacyManager(pactPartner)!!.signDefensivePact(20)
+                    val originalRemaining = pactOwner.getDiplomacyManager(pactPartner)!!.getFlag(DiplomacyFlags.DefensivePact)
+                    check(originalRemaining == 20) { "Defensive pact should start at 20 turns, got $originalRemaining" }
+                    val saved = UncivFiles.gameInfoToString(persistenceGame, forceZip = false)
+                    val restored = UncivFiles.gameInfoFromString(saved)
+                    val loadedOwner = restored.civilizations.first { it.civID == pactOwner.civID }
+                    val loadedPartner = restored.civilizations.first { it.civID == pactPartner.civID }
+                    val restoredPact = loadedOwner.getDiplomacyManager(loadedPartner)!!
+                    val reversePact = loadedPartner.getDiplomacyManager(loadedOwner)!!
+                    check(restoredPact.getFlag(DiplomacyFlags.DefensivePact) == originalRemaining) {
+                        "Save/load lost defensive pact remaining turns"
+                    }
+                    check(reversePact.getFlag(DiplomacyFlags.DefensivePact) == originalRemaining) {
+                        "Save/load lost reciprocal defensive pact remaining turns"
+                    }
+                    check(restoredPact.diplomaticStatus.name == "DefensivePact" &&
+                        reversePact.diplomaticStatus.name == "DefensivePact") {
+                        "Save/load lost bilateral defensive pact status"
+                    }
+                    say("PACT_SAVE_LOAD_CHECK durationPreserved=true reciprocalStatusPreserved=true")
+
 
                 }
                 var previous = snapshot()
