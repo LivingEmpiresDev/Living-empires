@@ -1,5 +1,6 @@
 package com.unciv.logic.civilization.diplomacy
 
+import com.badlogic.gdx.utils.Json
 import com.unciv.logic.trade.Trade
 import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeOfferType
@@ -138,6 +139,20 @@ class NonAggressionPactTests {
             copiedOffer.duration = 10
             assertEquals(11, original.turnsToNonAggressionPact())
             assertEquals(10, snapshot.turnsToNonAggressionPact())
+        }
+    }
+
+    @Test fun jsonRoundTripRetainsMidPactDurationOnBothSides() {
+        // Exercise serialization, rather than relying on DiplomacyManager.clone().
+        val json = Json()
+        for (ourSide in listOf(true, false)) {
+            val original = managerWithPact(ourSide, duration = 11)
+            original.diplomaticStatus = DiplomaticStatus.Peace
+            val encoded = json.toJson(original)
+            val restored = json.fromJson(DiplomacyManager::class.java, encoded)
+            assertEquals(11, restored.turnsToNonAggressionPact())
+            assertEquals(DiplomaticStatus.Peace, restored.diplomaticStatus)
+            assertEquals(original.otherCivName, restored.otherCivName)
         }
     }
 
