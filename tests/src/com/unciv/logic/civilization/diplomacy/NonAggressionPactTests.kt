@@ -1,6 +1,7 @@
 package com.unciv.logic.civilization.diplomacy
 
 import com.badlogic.gdx.utils.Json
+import com.unciv.logic.civilization.diplomacy.DiplomacyTurnManager
 import com.unciv.logic.trade.Trade
 import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeOfferType
@@ -178,6 +179,18 @@ class NonAggressionPactTests {
         })
         assertEquals(0, manager.turnsToNonAggressionPact())
         assertEquals(true, manager.canAttack())
+    }
+
+    @Test fun actualTurnProcessorCountsDownWithoutDoubleDecrement() {
+        // Call the production trade-turn processor (rather than modifying
+        // offer.duration directly). Stop before expiry, which needs a full game.
+        val manager = managerWithPact(true)
+        val method = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+        method.isAccessible = true
+        for (elapsed in 1..19) {
+            method.invoke(DiplomacyTurnManager, manager)
+            assertEquals("Elapsed turns: $elapsed", 20 - elapsed, manager.turnsToNonAggressionPact())
+        }
     }
 
     @Test fun noPactReturnsZero() {
