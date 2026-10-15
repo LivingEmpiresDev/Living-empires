@@ -156,6 +156,30 @@ class NonAggressionPactTests {
         }
     }
 
+    @Test fun overlappingPactsUseLongestActiveDuration() {
+        val manager = managerWithPact(true, duration = 4)
+        manager.trades.add(Trade().apply {
+            theirOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 9))
+        })
+        assertEquals(9, manager.turnsToNonAggressionPact())
+        assertEquals(false, manager.canAttack())
+        manager.trades.last().theirOffers.single().duration = 0
+        assertEquals(4, manager.turnsToNonAggressionPact())
+        assertEquals(false, manager.canAttack())
+        manager.trades.first().ourOffers.single().duration = 0
+        assertEquals(0, manager.turnsToNonAggressionPact())
+        assertEquals(true, manager.canAttack())
+    }
+
+    @Test fun unrelatedOfferWithTreatyNameCannotBlockWar() {
+        val manager = DiplomacyManager()
+        manager.trades.add(Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Gold, duration = 20))
+        })
+        assertEquals(0, manager.turnsToNonAggressionPact())
+        assertEquals(true, manager.canAttack())
+    }
+
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
