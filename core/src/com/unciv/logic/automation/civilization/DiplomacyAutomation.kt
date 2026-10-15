@@ -403,7 +403,13 @@ object DiplomacyAutomation {
             .toList()
 
         for (enemy in enemiesCiv) {
-            val pressure = PeaceNegotiationPolicy.peacePressure(\n                civInfo.getStatForRanking(RankingType.Force).toInt(),\n                enemy.getStatForRanking(RankingType.Force).toInt(),\n                (civInfo.getCivsAtWarWith().count() - 1).coerceAtLeast(0),\n                0 // War-duration tracking is not yet wired into this policy.\n            )\n            if (pressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
+            val pressure = PeaceNegotiationPolicy.peacePressure(
+                civInfo.getStatForRanking(RankingType.Force).toInt(),
+                enemy.getStatForRanking(RankingType.Force).toInt(),
+                (civInfo.getCivsAtWarWith().count() - 1).coerceAtLeast(0),
+                0 // War-duration tracking is not yet wired into this policy.
+            )
+            if (pressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
                 // We can still fight. Refuse peace.
                 continue
             }
