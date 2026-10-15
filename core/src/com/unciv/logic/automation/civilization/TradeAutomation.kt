@@ -5,6 +5,7 @@ import com.unciv.logic.civilization.NotificationCategory
 import com.unciv.logic.civilization.NotificationIcon
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.logic.civilization.diplomacy.RelationshipLevel
+import com.unciv.logic.civilization.diplomacy.PeaceNegotiationPolicy
 import com.unciv.logic.trade.Trade
 import com.unciv.logic.trade.TradeEvaluation
 import com.unciv.logic.trade.TradeLogic
@@ -74,8 +75,16 @@ object TradeAutomation {
                 continue // Don't want to counteroffer straight gold for gold, that's silly
             if (!offer.isTradable())
                 continue // For example resources gained by trade or CS
-            if (offer.type == TradeOfferType.City)
-                continue // Players generally don't want to give up their cities, and they might misclick
+            if (offer.type == TradeOfferType.City) {
+                // Only request territory when negotiating peace, never in ordinary trades.
+                // Keep the capital and final city safe and limit automated demands to one city.
+                if (!tradeRequest.trade.isPeaceTreaty()
+                    || !PeaceNegotiationPolicy.canConcedeCity(otherCiv.cities.size,
+                        tradeLogic.currentTrade.theirOffers.count { it.type == TradeOfferType.City })
+                    || otherCiv.getCapital()?.id == offer.name
+                    || potentialAsks.keys.any { it.type == TradeOfferType.City })
+                    continue
+            }
             if (offer.type == TradeOfferType.Luxury_Resource)
                 continue // Don't ask for luxuries as counteroffer, players likely don't want to sell them if they didn't offer them already
             if (tradeLogic.currentTrade.theirOffers.any { it.type == offer.type && it.name == offer.name })
@@ -161,6 +170,7 @@ object TradeAutomation {
             }
         }
 
+        // Do not send counteroffers which promise more than one city.
         tradeLogic.currentTrade.theirOffers.addAll(counterofferAsks.keys)
         tradeLogic.currentTrade.ourOffers.addAll(counterofferGifts)
 
