@@ -68,13 +68,24 @@ class DefensivePactTests {
     @Test
     fun `Defensive Pact timeout`() {
         meetAll()
-        a.getDiplomacyManager(b)!!.signDefensivePact(1)
-        Assert.assertTrue(a.getDiplomacyManager(b)!!.diplomaticStatus == DiplomaticStatus.DefensivePact)
-        a.getDiplomacyManager(b)!!.nextTurn()
-        b.getDiplomacyManager(a)!!.nextTurn()
+        val ab = a.getDiplomacyManager(b)!!
+        val ba = b.getDiplomacyManager(a)!!
+        // Even a caller requesting one turn must receive Living Empires' fixed 20-turn pact.
+        ab.signDefensivePact(1)
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ab.diplomaticStatus)
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ba.diplomaticStatus)
 
-        Assert.assertFalse(a.getDiplomacyManager(b)!!.diplomaticStatus == DiplomaticStatus.DefensivePact
-            || b.getDiplomacyManager(a)!!.diplomaticStatus == DiplomaticStatus.DefensivePact)
+        repeat(19) {
+            ab.nextTurn()
+            ba.nextTurn()
+        }
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ab.diplomaticStatus)
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ba.diplomaticStatus)
+
+        ab.nextTurn()
+        ba.nextTurn()
+        Assert.assertEquals(DiplomaticStatus.Peace, ab.diplomaticStatus)
+        Assert.assertEquals(DiplomaticStatus.Peace, ba.diplomaticStatus)
     }
 
     @Test
