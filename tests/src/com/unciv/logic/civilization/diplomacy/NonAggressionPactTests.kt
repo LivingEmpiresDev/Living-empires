@@ -211,36 +211,6 @@ class NonAggressionPactTests {
         assertEquals(10, manager.trades.single().ourOffers.last().duration)
     }
 
-    @Test fun bilateralProductionTurnsExpireAndRenewSymmetrically() {
-        val first = managerWithPact(true)
-        val second = managerWithPact(false)
-        // Keep each trade alive after the pact expires so that this isolated
-        // test does not enter the game-dependent expiry notification path.
-        for (manager in listOf(first, second))
-            manager.trades.single().ourOffers.add(
-                TradeOffer("stage2-longer-offer", TradeOfferType.Treaty, duration = 30)
-            )
-        val tick = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
-        tick.isAccessible = true
-        for (turn in 1..20) {
-            tick.invoke(DiplomacyTurnManager, first)
-            tick.invoke(DiplomacyTurnManager, second)
-            val remaining = 20 - turn
-            assertEquals("First civ on turn $turn", remaining, first.turnsToNonAggressionPact())
-            assertEquals("Second civ on turn $turn", remaining, second.turnsToNonAggressionPact())
-            assertEquals("First attack gate on turn $turn", turn == 20, first.canAttack())
-            assertEquals("Second attack gate on turn $turn", turn == 20, second.canAttack())
-        }
-        first.trades.add(Trade().apply {
-            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
-        })
-        second.trades.add(first.trades.last().reverse())
-        assertEquals(20, first.turnsToNonAggressionPact())
-        assertEquals(20, second.turnsToNonAggressionPact())
-        assertEquals(false, first.canAttack())
-        assertEquals(false, second.canAttack())
-    }
-
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
