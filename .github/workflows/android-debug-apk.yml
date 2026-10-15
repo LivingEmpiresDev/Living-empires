@@ -22,7 +22,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      # Use the runner's preinstalled Android SDK; setup-android attempts to install
+      # the obsolete 'tools' SDK package and fails before Gradle starts.
+      - name: Accept installed Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
       - name: Build installable debug APK
         run: ./gradlew :android:assembleDebug --console=plain
