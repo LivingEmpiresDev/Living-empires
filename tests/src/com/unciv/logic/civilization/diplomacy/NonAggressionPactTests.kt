@@ -124,6 +124,23 @@ class NonAggressionPactTests {
         }
     }
 
+    @Test fun diplomacySnapshotRetainsRemainingPactDuration() {
+        // DiplomacyManager.clone() is used for game-state copies. Verify a
+        // mid-treaty snapshot keeps its remaining duration independently.
+        for (ourSide in listOf(true, false)) {
+            val original = managerWithPact(ourSide, duration = 11)
+            original.diplomaticStatus = DiplomaticStatus.Peace
+            val snapshot = original.clone()
+            assertEquals(11, snapshot.turnsToNonAggressionPact())
+            assertEquals(DiplomaticStatus.Peace, snapshot.diplomaticStatus)
+            val copiedOffer = if (ourSide) snapshot.trades.single().ourOffers.single()
+                              else snapshot.trades.single().theirOffers.single()
+            copiedOffer.duration = 10
+            assertEquals(11, original.turnsToNonAggressionPact())
+            assertEquals(10, snapshot.turnsToNonAggressionPact())
+        }
+    }
+
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
