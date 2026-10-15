@@ -10,6 +10,7 @@ on:
     branches:
       - 'stage-2/non-aggression-pact'
       - 'stage-3/alliances-coordinated-wars'
+      - 'stage-4/advanced-peace-reparations'
     paths:
       - 'core/**'
       - 'android/**'
