@@ -191,6 +191,7 @@ object OjhBenchmark {
                     }.toMap()
                 }
                 var previous = snapshot()
+                var pactDurationViolations = 0
                 var result = GameSimulationRunner.run(simulation, 1)
                 for (turn in 1..turns) {
                     if (turn > 1) result = GameSimulationRunner.run(simulation, 1)
@@ -199,6 +200,8 @@ object OjhBenchmark {
                         val before = previous[pair]
                         val after = current[pair]
                         if (before != after) say("EVENT game=$index turn=${simulation.turns} pair=$pair before=${before ?: "unknown"} after=${after ?: "unknown"}")
+                        val pactTurns = Regex("pactTurns=(\\d+)").find(after ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                        if (pactTurns > 20) pactDurationViolations++
                     }
                     previous = current
                     if (simulation.turns >= turns) break
@@ -210,6 +213,7 @@ object OjhBenchmark {
                 result.civilizations.forEach { civ ->
                     say("CIV game=$index name=${civ.name} alive=${civ.alive} cities=${civ.cities} won=${civ.won}")
                 }
+                check(pactDurationViolations == 0) { "Game $index found $pactDurationViolations pact durations exceeding 20 turns" }
                 if (result.completed) completed++
                 totalWars += result.activeWars
                 totalPacts += result.activeDefensivePacts
