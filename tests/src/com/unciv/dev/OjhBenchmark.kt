@@ -282,7 +282,12 @@ object OjhBenchmark {
                         }
                         if (bothAlive && oldTurns > 0 && pactTurns > 0 && pactTurns != oldTurns - 1 && pactTurns != 20) {
                             brokenCountdowns++
-                            say("PACT_COUNTDOWN_ERROR game=$index turn=${simulation.turns} pair=$pair before=$oldTurns after=$pactTurns")
+                            val sides = pairCivs.map { civ ->
+                                val partner = pairCivs.first { it != civ }
+                                val manager = civ.getDiplomacyManager(partner)
+                                "${civ.civName}:pact=${manager?.getFlag(DiplomacyFlags.DefensivePact)} status=${manager?.diplomaticStatus}"
+                            }
+                            say("PACT_COUNTDOWN_ERROR game=$index turn=${simulation.turns} pair=$pair before=$oldTurns after=$pactTurns sides=$sides beforeState=$before afterState=$after")
                         }
                     }
                     previous = current
