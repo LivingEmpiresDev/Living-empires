@@ -280,7 +280,13 @@ object OjhBenchmark {
                         if (!bothAlive && oldTurns > 0 && pactTurns == oldTurns) {
                             say("PACT_FROZEN_DEFEATED game=$index turn=${simulation.turns} pair=$pair remaining=$pactTurns")
                         }
-                        if (bothAlive && oldTurns > 0 && pactTurns > 0 && pactTurns != oldTurns - 1 && pactTurns != 20) {
+                        // A pact can be renewed during a civilization's turn. Its two directional
+                        // flags may then read 20 and 19 until the next world turn.
+                        val renewedThisTurn = pairCivs.size == 2 && pairCivs.any { civ ->
+                            val partner = pairCivs.first { it != civ }
+                            civ.getDiplomacyManager(partner)?.getFlag(DiplomacyFlags.DefensivePact) == 20
+                        }
+                        if (bothAlive && oldTurns > 0 && pactTurns > 0 && pactTurns != oldTurns - 1 && !renewedThisTurn) {
                             brokenCountdowns++
                             val sides = pairCivs.map { civ ->
                                 val partner = pairCivs.first { it != civ }
