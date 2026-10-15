@@ -13,7 +13,6 @@ object GameSimulationRunner {
         val name: String,
         val alive: Boolean,
         val cities: Int,
-        val units: Int,
         val won: Boolean,
     )
 
@@ -56,7 +55,6 @@ object GameSimulationRunner {
                     name = civ.civName,
                     alive = civ.isAlive(),
                     cities = civ.cities.size,
-                    units = civ.units.getCivUnits().size,
                     won = civ.victoryManager.hasWon(),
                 )
             },
