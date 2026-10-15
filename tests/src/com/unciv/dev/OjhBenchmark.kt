@@ -207,6 +207,23 @@ object OjhBenchmark {
                     check(defender.isAtWarWith(attacker)) { "Attacker did not enter war with defender" }
                     check(ally.isAtWarWith(attacker)) { "Defensive ally failed to intervene when defender was attacked" }
                     say("INTERVENTION_CHECK defensiveAllyJoined=true")
+                    // Independent fresh game: offensive declarations must not activate defensive allies.
+                    val offensiveGame = start(players, size, mapPath, seed + 100000L)
+                    val offensiveTrio = offensiveGame.civilizations.filter { it.isMajorCiv() }.take(3)
+                    check(offensiveTrio.size == 3)
+                    val aggressor = offensiveTrio[0]
+                    val passiveAlly = offensiveTrio[1]
+                    val target = offensiveTrio[2]
+                    for (a in offensiveTrio) for (b in offensiveTrio) {
+                        if (a != b && !a.knows(b)) a.diplomacyFunctions.makeCivilizationsMeet(b, true)
+                    }
+                    aggressor.getDiplomacyManager(passiveAlly)!!.signDefensivePact(20)
+                    check(!passiveAlly.isAtWarWith(target))
+                    aggressor.getDiplomacyManager(target)!!.declareWar()
+                    check(aggressor.isAtWarWith(target)) { "Offensive declaration did not start a war" }
+                    check(!passiveAlly.isAtWarWith(target)) { "Defensive ally incorrectly joined an offensive war" }
+                    say("OFFENSIVE_WAR_CHECK defensiveAllyStayedNeutral=true")
+
                 }
                 var previous = snapshot()
                 var pactDurationViolations = 0
