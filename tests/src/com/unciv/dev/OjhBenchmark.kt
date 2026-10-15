@@ -8,6 +8,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
+import com.unciv.logic.GameSimulationRunner
 import com.unciv.logic.GameStarter
 import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.files.MapSaver
@@ -115,7 +116,7 @@ object OjhBenchmark {
     fun main(args: Array<String>) {
         val mode = args.firstOrNull()
             ?: throw IllegalArgumentException("the first argument is the mode: turns or fps")
-        require(mode == "turns" || mode == "fps") { "unknown mode $mode" }
+        require(mode == "turns" || mode == "fps" || mode == "simulate") { "unknown mode $mode" }
         var turns = 100
         var seconds = 5.0
         var lateTurns = 20
@@ -164,6 +165,16 @@ object OjhBenchmark {
         val bootStart = System.nanoTime()
         val info = start(players, size, mapPath, seed)
         val bootSeconds = (System.nanoTime() - bootStart) / 1e9
+
+        if (mode == "simulate") {
+            val result = GameSimulationRunner.run(info, turns)
+            say("SIMULATION start=${result.startingTurn} end=${result.endingTurn} requested=${result.requestedTurns} completed=${result.completed}")
+            result.civilizations.forEach { civ ->
+                say("CIV name=${civ.name} alive=${civ.alive} cities=${civ.cities} won=${civ.won}")
+            }
+            System.out.flush()
+            exitProcess(0)
+        }
 
         say("OJH players ${info.civilizations.count { it.playerType == PlayerType.AI && !it.isBarbarian }}")
         say("OJH regions ${info.tileMap.values.size} tiles")
