@@ -112,6 +112,18 @@ class NonAggressionPactTests {
         }
     }
 
+    @Test fun directWarDeclarationIsRejectedForBothTreatySides() {
+        // Exercise the actual declaration entry point, not just canAttack().
+        // A missing game context would throw if the call reached DeclareWar.declareWar.
+        for (ourSide in listOf(true, false)) {
+            val manager = managerWithPact(ourSide)
+            manager.diplomaticStatus = DiplomaticStatus.Peace
+            manager.declareWar()
+            assertEquals(DiplomaticStatus.Peace, manager.diplomaticStatus)
+            assertEquals(20, manager.turnsToNonAggressionPact())
+        }
+    }
+
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
