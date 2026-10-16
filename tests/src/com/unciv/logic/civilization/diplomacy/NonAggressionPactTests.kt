@@ -18,8 +18,8 @@ class NonAggressionPactIntegrationTests {
         val game = TestGame()
         val first = game.addCiv()
         val second = game.addCiv()
-        game.addUnit("Warrior", first)
-        game.addUnit("Warrior", second)
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
         game.makeHexagonalMap(4)
         first.diplomacyFunctions.makeCivilizationsMeet(second)
         val firstManager = first.getDiplomacyManager(second)!!
