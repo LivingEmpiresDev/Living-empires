@@ -14,6 +14,61 @@ import org.junit.Test
 /** Integration tests using real Civilization instances and their diplomacy managers. */
 @RunWith(BaseTestRunner::class)
 class NonAggressionPactIntegrationTests {
+    @Test fun realCivilizationPactRemainsSymmetricAcrossCloneAndCountdown() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val pact = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(pact)
+        secondManager.trades.add(pact.reverse())
+        val tick = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+        tick.isAccessible = true
+        repeat(7) {
+            tick.invoke(DiplomacyTurnManager, firstManager)
+            tick.invoke(DiplomacyTurnManager, secondManager)
+        }
+        assertEquals(13, firstManager.turnsToNonAggressionPact())
+        assertEquals(13, secondManager.turnsToNonAggressionPact())
+        assertEquals(13, firstManager.clone().turnsToNonAggressionPact())
+        assertEquals(13, secondManager.clone().turnsToNonAggressionPact())
+        assertEquals(false, firstManager.canDeclareWar())
+        assertEquals(false, secondManager.canDeclareWar())
+    }
+
+    @Test fun unrelatedTradeCancellationDoesNotChangeSeparatePact() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val pact = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(pact)
+        secondManager.trades.add(pact.reverse())
+        val unrelated = Trade().apply {
+            ourOffers.add(TradeOffer("Gold", TradeOfferType.Gold, amount = 10, duration = 0))
+        }
+        firstManager.trades.add(unrelated)
+        secondManager.trades.add(unrelated.reverse())
+        firstManager.trades.remove(unrelated)
+        secondManager.trades.removeAt(secondManager.trades.lastIndex)
+        assertEquals(20, firstManager.turnsToNonAggressionPact())
+        assertEquals(20, secondManager.turnsToNonAggressionPact())
+    }
+
     @Test fun directWarDeclarationDoesNotBreakActivePactInRealGame() {
         val game = TestGame()
         val first = game.addCiv()
