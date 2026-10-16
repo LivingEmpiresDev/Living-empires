@@ -120,6 +120,37 @@ class NonAggressionPactIntegrationTests {
         assertEquals(20, secondManager.turnsToNonAggressionPact())
     }
 
+    @Test fun simulatedTwentyTurnAIDecisionGateNeverTargetsTreatyPartner() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val trade = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(trade)
+        secondManager.trades.add(trade.reverse())
+        val tick = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+        tick.isAccessible = true
+        repeat(20) { turn ->
+            // DiplomacyAutomation's target filter requires canDeclareWar().
+            assertEquals(false, firstManager.canDeclareWar())
+            assertEquals(false, secondManager.canDeclareWar())
+            firstManager.declareWar()
+            secondManager.declareWar()
+            assertEquals("Unexpected war on turn $turn", false, first.isAtWarWith(second))
+            tick.invoke(DiplomacyTurnManager, firstManager)
+            tick.invoke(DiplomacyTurnManager, secondManager)
+        }
+        assertEquals(true, firstManager.canDeclareWar())
+        assertEquals(true, secondManager.canDeclareWar())
+    }
+
     @Test fun realCivilizationsRetainPactAfterJsonRoundTripAndContinueTurns() {
         val game = TestGame()
         val first = game.addCiv()
