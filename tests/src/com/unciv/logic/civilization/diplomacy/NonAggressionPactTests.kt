@@ -120,6 +120,31 @@ class NonAggressionPactIntegrationTests {
         assertEquals(20, secondManager.turnsToNonAggressionPact())
     }
 
+    @Test fun realCivilizationDiplomacySurvivesJsonSaveAndReloadAtMidPact() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val trade = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 13))
+        }
+        firstManager.trades.add(trade)
+        secondManager.trades.add(trade.reverse())
+        val json = Json()
+        for (manager in listOf(firstManager, secondManager)) {
+            val restored = json.fromJson(DiplomacyManager::class.java, json.toJson(manager))
+            assertEquals(13, restored.turnsToNonAggressionPact())
+            assertEquals(manager.otherCivName, restored.otherCivName)
+            assertEquals(false, restored.canAttack())
+            assertEquals(1, restored.trades.size)
+        }
+    }
+
     @Test fun realCivilizationsRejectDuplicateAndWartimePacts() {
         val game = TestGame()
         val first = game.addCiv()
