@@ -9,18 +9,22 @@ on:
   push:
     branches:
       - 'stage-2/non-aggression-pact'
-      - 'stage-3/alliances-coordinated-wars'
+      - 'stage-3/merge-validation-20261016'
       - 'stage-4/advanced-peace-reparations'
     paths:
       - 'core/**'
+      - 'tests/**'
       - 'android/**'
       - 'build.gradle.kts'
       - 'gradle-wrapper.properties'
       - 'gradle/libs.versions.toml'
       - 'android/build.gradle.kts'
       - '.github/workflows/androidBuild.yml'
-  pull_request_target:
+  pull_request:
     paths:
+      - 'core/**'
+      - 'tests/**'
+      - 'android/**'
       - 'build.gradle.kts'
       - 'gradle-wrapper.properties'
       - 'gradle/libs.versions.toml'

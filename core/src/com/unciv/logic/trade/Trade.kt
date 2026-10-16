@@ -36,8 +36,8 @@ class Trade : IsPartOfGameInfoSerialization {
 
     fun clone(): Trade {
         val toReturn = Trade()
-        toReturn.theirOffers.addAll(theirOffers)
-        toReturn.ourOffers.addAll(ourOffers)
+        toReturn.theirOffers.addAll(theirOffers.map { it.copy() })
+        toReturn.ourOffers.addAll(ourOffers.map { it.copy() })
         return toReturn
     }
 

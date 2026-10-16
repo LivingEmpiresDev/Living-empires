@@ -62,7 +62,6 @@ class TradeLogic(val ourCivilization: Civilization, val otherCivilization: Civil
                 duration = LivingEmpiresTreaties.duration))
         }
 
-        // Living Empires alliances use a fixed 20-turn commitment.
         if (civInfo.diplomacyFunctions.canSignDefensivePactWith(otherCiv))
             offers.add(TradeOffer(Constants.defensivePact, TradeOfferType.Treaty,
                 duration = LivingEmpiresTreaties.duration))
