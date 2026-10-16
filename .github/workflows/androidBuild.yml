@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - 'master'
       - 'stage-2/non-aggression-pact'
       - 'stage-3/merge-validation-20261016'
     paths:
