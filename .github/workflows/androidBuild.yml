@@ -12,14 +12,18 @@ on:
       - 'stage-3/merge-validation-20261016'
     paths:
       - 'core/**'
+      - 'tests/**'
       - 'android/**'
       - 'build.gradle.kts'
       - 'gradle-wrapper.properties'
       - 'gradle/libs.versions.toml'
       - 'android/build.gradle.kts'
       - '.github/workflows/androidBuild.yml'
-  pull_request_target:
+  pull_request:
     paths:
+      - 'core/**'
+      - 'tests/**'
+      - 'android/**'
       - 'build.gradle.kts'
       - 'gradle-wrapper.properties'
       - 'gradle/libs.versions.toml'
