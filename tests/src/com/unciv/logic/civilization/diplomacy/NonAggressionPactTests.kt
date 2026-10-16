@@ -5,8 +5,52 @@ import com.unciv.logic.civilization.diplomacy.DiplomacyTurnManager
 import com.unciv.logic.trade.Trade
 import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeOfferType
+import com.unciv.testing.BaseTestRunner
+import com.unciv.testing.TestGame
+import org.junit.runner.RunWith
 import org.junit.Assert.assertEquals
 import org.junit.Test
+
+/** Integration tests using real Civilization instances and their diplomacy managers. */
+@RunWith(BaseTestRunner::class)
+class NonAggressionPactIntegrationTests {
+    @Test fun realCivilizationsObserveBilateralPactAndRenewal() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first)
+        game.addUnit("Warrior", second)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val trade = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(trade)
+        secondManager.trades.add(trade.reverse())
+        for (turn in 0..20) {
+            assertEquals(20 - turn, firstManager.turnsToNonAggressionPact())
+            assertEquals(20 - turn, secondManager.turnsToNonAggressionPact())
+            assertEquals(turn == 20, firstManager.canDeclareWar())
+            assertEquals(turn == 20, secondManager.canDeclareWar())
+            if (turn < 20) {
+                // Real game objects permit notifications on expiry.
+                val tick = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+                tick.isAccessible = true
+                tick.invoke(DiplomacyTurnManager, firstManager)
+                tick.invoke(DiplomacyTurnManager, secondManager)
+            }
+        }
+        val renewed = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(renewed)
+        secondManager.trades.add(renewed.reverse())
+        assertEquals(false, firstManager.canDeclareWar())
+        assertEquals(false, secondManager.canDeclareWar())
+    }
+}
 
 /** Stage 2 treaty regression checks. No graphics or Android device required. */
 class NonAggressionPactTests {
