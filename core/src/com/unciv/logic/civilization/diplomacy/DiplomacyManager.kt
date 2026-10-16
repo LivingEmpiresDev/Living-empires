@@ -757,11 +757,14 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     }
 
     fun signDefensivePact(duration: Int) {
+        // Living Empires defensive alliances always last 20 world turns,
+        // independent of trade-offer duration and game-speed scaling.
+        val fixedDuration = 20
         //Note: These modifiers are additive to the friendship modifiers
         setModifier(DiplomaticModifiers.DefensivePact, 10f)
         otherCivDiplomacy().setModifier(DiplomaticModifiers.DefensivePact, 10f)
-        setFlag(DiplomacyFlags.DefensivePact, duration)
-        otherCivDiplomacy().setFlag(DiplomacyFlags.DefensivePact, duration)
+        setFlag(DiplomacyFlags.DefensivePact, fixedDuration)
+        otherCivDiplomacy().setFlag(DiplomacyFlags.DefensivePact, fixedDuration)
         diplomaticStatus = DiplomaticStatus.DefensivePact
         otherCivDiplomacy().diplomaticStatus = DiplomaticStatus.DefensivePact
 

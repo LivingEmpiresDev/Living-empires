@@ -282,7 +282,7 @@ object DiplomacyAutomation {
             if (wantsToSignDefensivePact(civInfo, otherCiv)) {
                 //todo: Add more in depth evaluation here
                 val tradeLogic = TradeLogic(civInfo, otherCiv)
-                val tradeOffer = TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, speed = civInfo.gameInfo.speed)
+                val tradeOffer = TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, duration = 20)
 
                 tradeLogic.currentTrade.ourOffers.add(tradeOffer)
                 tradeLogic.currentTrade.theirOffers.add(tradeOffer)
@@ -323,7 +323,10 @@ object DiplomacyAutomation {
         val allAliveCivs = allCivs - deadCivs
 
         // We have to already be at RelationshipLevel.Ally, so we must have 80 oppinion of them
+        // A current declaration of friendship is a meaningful commitment, and should
+        // contribute to defensive-pact willingness for both AI- and player-led offers.
         var motivation = ourDiploManager.opinionOfOtherCiv() - 80
+        if (ourDiploManager.hasFlag(DiplomacyFlags.DeclarationOfFriendship)) motivation += 15
 
         // Warmongerers don't make good allies
         if (ourDiploManager.hasModifier(DiplomaticModifiers.WarMongerer)) {

@@ -41,6 +41,22 @@ class DefensivePactTests {
     }
 
     @Test
+    fun `Enemy attacking pact member automatically brings defensive ally into war`() {
+        meetAll()
+        // a is the player under attack, b is their defensive ally, c is the aggressor.
+        a.getDiplomacyManager(b)!!.signDefensivePact(20)
+        Assert.assertFalse(a.isAtWarWith(c))
+        Assert.assertFalse(b.isAtWarWith(c))
+
+        c.getDiplomacyManager(a)!!.declareWar()
+
+        Assert.assertTrue("The attacked civilization must be at war with the aggressor", a.isAtWarWith(c))
+        Assert.assertTrue("The defensive ally must automatically join against the aggressor", b.isAtWarWith(c))
+        Assert.assertTrue("War must be reciprocal", c.isAtWarWith(b))
+        Assert.assertFalse("Defensive allies must not fight each other", a.isAtWarWith(b))
+    }
+
+    @Test
     fun `Defensive Pact cancel when attacking`() {
         meetAll()
         a.getDiplomacyManager(b)!!.signDefensivePact(100)
@@ -52,13 +68,24 @@ class DefensivePactTests {
     @Test
     fun `Defensive Pact timeout`() {
         meetAll()
-        a.getDiplomacyManager(b)!!.signDefensivePact(1)
-        Assert.assertTrue(a.getDiplomacyManager(b)!!.diplomaticStatus == DiplomaticStatus.DefensivePact)
-        a.getDiplomacyManager(b)!!.nextTurn()
-        b.getDiplomacyManager(a)!!.nextTurn()
+        val ab = a.getDiplomacyManager(b)!!
+        val ba = b.getDiplomacyManager(a)!!
+        // Even a caller requesting one turn must receive Living Empires' fixed 20-turn pact.
+        ab.signDefensivePact(1)
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ab.diplomaticStatus)
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ba.diplomaticStatus)
 
-        Assert.assertFalse(a.getDiplomacyManager(b)!!.diplomaticStatus == DiplomaticStatus.DefensivePact
-            || b.getDiplomacyManager(a)!!.diplomaticStatus == DiplomaticStatus.DefensivePact)
+        repeat(19) {
+            ab.nextTurn()
+            ba.nextTurn()
+        }
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ab.diplomaticStatus)
+        Assert.assertEquals(DiplomaticStatus.DefensivePact, ba.diplomaticStatus)
+
+        ab.nextTurn()
+        ba.nextTurn()
+        Assert.assertEquals(DiplomaticStatus.Peace, ab.diplomaticStatus)
+        Assert.assertEquals(DiplomaticStatus.Peace, ba.diplomaticStatus)
     }
 
     @Test

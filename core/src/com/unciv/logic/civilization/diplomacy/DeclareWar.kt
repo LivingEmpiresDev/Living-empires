@@ -107,7 +107,11 @@ object DeclareWar {
                 defender.addNotification("[${aggressor.civName}] has joined [${allyCiv.civName}] in the war against us!",
                     NotificationCategory.Diplomacy, defender.civName, NotificationIcon.War, allyCiv.civName, aggressor.civName)
 
-                aggressor.addNotification("We have joined [${allyCiv.civName}] in the war against [${defender.civName}]!",
+                val joiningWarMessage = if (declareWarReason.warType == WarType.DefensivePactWar)
+                    "Defensive Pact activated: [${allyCiv.civName}] was attacked by [${defender.civName}]. We have joined the war to defend our ally!"
+                else
+                    "We have joined [${allyCiv.civName}] in the war against [${defender.civName}]!"
+                aggressor.addNotification(joiningWarMessage,
                     NotificationCategory.Diplomacy, defender.civName, NotificationIcon.War, allyCiv.civName, aggressor.civName)
 
                 diplomacyManager.getCommonKnownCivsWithSpectators().filterNot { it == allyCiv }.forEach {
