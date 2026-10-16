@@ -7,6 +7,7 @@ import com.unciv.logic.automation.civilization.MotivationToAttackAutomation.hasA
 import com.unciv.logic.civilization.AlertType
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.civilization.PopupAlert
+import com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.logic.civilization.diplomacy.DiplomacyManager
 import com.unciv.logic.civilization.diplomacy.DiplomaticModifiers
@@ -282,7 +283,7 @@ object DiplomacyAutomation {
             if (wantsToSignDefensivePact(civInfo, otherCiv)) {
                 //todo: Add more in depth evaluation here
                 val tradeLogic = TradeLogic(civInfo, otherCiv)
-                val tradeOffer = TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, speed = civInfo.gameInfo.speed)
+                val tradeOffer = TradeOffer(Constants.defensivePact, TradeOfferType.Treaty, duration = LivingEmpiresTreaties.duration)
 
                 tradeLogic.currentTrade.ourOffers.add(tradeOffer)
                 tradeLogic.currentTrade.theirOffers.add(tradeOffer)

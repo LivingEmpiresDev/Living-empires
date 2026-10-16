@@ -139,11 +139,10 @@ class TradeEvaluation {
             else if (relationshipLevel == RelationshipLevel.Unforgivable) sumOfOurOffers *= 2
         }
         if (trade.ourOffers.firstOrNull { it.name == Constants.defensivePact } != null) {
-            if (relationshipLevel == RelationshipLevel.Ally) {
-                //todo: Add more in depth evaluation here
-            } else {
+            // A defensive alliance requires an established friendly relationship.
+            // The existing defensive-pact AI preference still determines willingness.
+            if (relationshipLevel != RelationshipLevel.Ally && relationshipLevel != RelationshipLevel.Friend)
                 return Int.MIN_VALUE
-            }
         }
         val diplomaticGifts: Int = if (includeDiplomaticGifts) evaluator.getDiplomacyManager(tradePartner)!!.getGoldGifts() else 0
         return (sumOfTheirOffers - sumOfOurOffers + diplomaticGifts)
