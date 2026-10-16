@@ -208,6 +208,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
 
     var trades = ArrayList<Trade>()
     var diplomaticStatus = DiplomaticStatus.War
+    /** Turn when this war began. -1 indicates an older save without recorded war history. */
+    var warStartedOnTurn = -1
 
     /** Contains various flags (declared war, promised to not settle, declined luxury trade) and the number of turns in which they will expire.
      *  The JSON serialize/deserialize REFUSES to deserialize hashmap keys as Enums, so I'm forced to use strings instead =(
@@ -267,6 +269,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         val toReturn = DiplomacyManager()
         toReturn.otherCivName = otherCivName
         toReturn.diplomaticStatus = diplomaticStatus
+        toReturn.warStartedOnTurn = warStartedOnTurn
         toReturn.trades.addAll(trades.map { it.clone() })
         toReturn.influence = influence
         toReturn.flagsCountdown.putAll(flagsCountdown)
@@ -614,6 +617,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     /** Should only be called from makePeace */
     private fun makePeaceOneSide() {
         diplomaticStatus = DiplomaticStatus.Peace
+        warStartedOnTurn = -1
         val otherCiv = otherCiv
         // Get out of others' territory
         for (unit in civInfo.units.getCivUnits().filter { it.getTile().getOwner() == otherCiv }.toList())
