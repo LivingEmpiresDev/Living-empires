@@ -120,6 +120,38 @@ class NonAggressionPactIntegrationTests {
         assertEquals(20, secondManager.turnsToNonAggressionPact())
     }
 
+    @Test fun realCivilizationsRetainPactAfterJsonRoundTripAndContinueTurns() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val trade = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 12))
+        }
+        firstManager.trades.add(trade)
+        secondManager.trades.add(trade.reverse())
+        val json = Json()
+        val tick = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+        tick.isAccessible = true
+        val restoredFirst = json.fromJson(DiplomacyManager::class.java, json.toJson(firstManager))
+        val restoredSecond = json.fromJson(DiplomacyManager::class.java, json.toJson(secondManager))
+        // Restored managers are detached snapshots; verify the production turn
+        // processor keeps their treaty countdown synchronized until just before expiry.
+        repeat(9) {
+            tick.invoke(DiplomacyTurnManager, restoredFirst)
+            tick.invoke(DiplomacyTurnManager, restoredSecond)
+        }
+        assertEquals(3, restoredFirst.turnsToNonAggressionPact())
+        assertEquals(3, restoredSecond.turnsToNonAggressionPact())
+        assertEquals(false, restoredFirst.canAttack())
+        assertEquals(false, restoredSecond.canAttack())
+    }
+
     @Test fun aiWarEligibilityTracksPactExpirationOnBothSides() {
         val game = TestGame()
         val first = game.addCiv()
