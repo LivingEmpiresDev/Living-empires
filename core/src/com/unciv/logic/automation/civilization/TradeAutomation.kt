@@ -82,6 +82,7 @@ object TradeAutomation {
                     || !PeaceNegotiationPolicy.canConcedeCity(otherCiv.cities.size,
                         tradeLogic.currentTrade.theirOffers.count { it.type == TradeOfferType.City })
                     || otherCiv.getCapital()?.id == offer.name
+                    || tradeLogic.currentTrade.theirOffers.any { it.type == TradeOfferType.City }
                     || potentialAsks.keys.any { it.type == TradeOfferType.City })
                     continue
             }
@@ -170,7 +171,12 @@ object TradeAutomation {
             }
         }
 
-        // Do not send counteroffers which promise more than one city.
+        // Prevent invalid or exploitative peace demands before sending the counteroffer.
+        val requestedCities = counterofferAsks.keys.count { it.type == TradeOfferType.City }
+        val alreadyRequestedCities = tradeLogic.currentTrade.theirOffers.count { it.type == TradeOfferType.City }
+        if (requestedCities + alreadyRequestedCities > 1 ||
+            !PeaceNegotiationPolicy.canConcedeCity(otherCiv.cities.size, requestedCities + alreadyRequestedCities - 1)
+                && requestedCities > 0) return null
         tradeLogic.currentTrade.theirOffers.addAll(counterofferAsks.keys)
         tradeLogic.currentTrade.ourOffers.addAll(counterofferGifts)
 
