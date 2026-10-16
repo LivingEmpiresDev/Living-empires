@@ -14,6 +14,30 @@ import org.junit.Test
 /** Integration tests using real Civilization instances and their diplomacy managers. */
 @RunWith(BaseTestRunner::class)
 class NonAggressionPactIntegrationTests {
+    @Test fun realCivilizationsRejectDuplicateAndWartimePacts() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val offer = TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20)
+        val trade = Trade().apply { ourOffers.add(offer) }
+        val evaluation = com.unciv.logic.trade.TradeEvaluation()
+        assertEquals(true, evaluation.isTradeValid(trade, first, second))
+        firstManager.trades.add(trade)
+        secondManager.trades.add(trade.reverse())
+        assertEquals(false, evaluation.isTradeValid(trade, first, second))
+        firstManager.trades.clear()
+        secondManager.trades.clear()
+        firstManager.diplomaticStatus = DiplomaticStatus.War
+        secondManager.diplomaticStatus = DiplomaticStatus.War
+        assertEquals(false, evaluation.isTradeValid(trade, first, second))
+    }
+
     @Test fun realCivilizationsObserveBilateralPactAndRenewal() {
         val game = TestGame()
         val first = game.addCiv()
