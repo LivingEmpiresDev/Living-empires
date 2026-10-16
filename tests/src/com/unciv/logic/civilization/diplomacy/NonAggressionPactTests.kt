@@ -120,6 +120,32 @@ class NonAggressionPactIntegrationTests {
         assertEquals(20, secondManager.turnsToNonAggressionPact())
     }
 
+    @Test fun aiWarEligibilityTracksPactExpirationOnBothSides() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val pact = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(pact)
+        secondManager.trades.add(pact.reverse())
+        // The AI war-target filter uses canDeclareWar() on this same manager.
+        for (remaining in 20 downTo 0) {
+            assertEquals(remaining == 0, firstManager.canDeclareWar())
+            assertEquals(remaining == 0, secondManager.canDeclareWar())
+            if (remaining > 0) {
+                firstManager.trades.single().ourOffers.single().duration--
+                secondManager.trades.single().theirOffers.single().duration--
+            }
+        }
+    }
+
     @Test fun realCivilizationDiplomacySurvivesJsonSaveAndReloadAtMidPact() {
         val game = TestGame()
         val first = game.addCiv()
