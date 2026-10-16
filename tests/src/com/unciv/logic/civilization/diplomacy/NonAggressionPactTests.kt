@@ -43,6 +43,34 @@ class NonAggressionPactIntegrationTests {
         assertEquals(false, secondManager.canDeclareWar())
     }
 
+    @Test fun invalidResourceTradeRestoresPactOnceOnBothSides() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val trade = Trade().apply {
+            ourOffers.add(TradeOffer("stage2-missing-resource-a", TradeOfferType.Luxury_Resource, duration = 20))
+            ourOffers.add(TradeOffer("stage2-missing-resource-b", TradeOfferType.Luxury_Resource, duration = 20))
+            theirOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(trade)
+        secondManager.trades.add(trade.reverse())
+        val cancel = DiplomacyTurnManager::class.java.getDeclaredMethod("removeUntenableTrades", DiplomacyManager::class.java)
+        cancel.isAccessible = true
+        cancel.invoke(DiplomacyTurnManager, firstManager)
+        assertEquals(1, firstManager.trades.size)
+        assertEquals(1, secondManager.trades.size)
+        assertEquals(20, firstManager.turnsToNonAggressionPact())
+        assertEquals(20, secondManager.turnsToNonAggressionPact())
+        assertEquals(false, firstManager.canDeclareWar())
+        assertEquals(false, secondManager.canDeclareWar())
+    }
+
     @Test fun unrelatedTradeCancellationDoesNotChangeSeparatePact() {
         val game = TestGame()
         val first = game.addCiv()
