@@ -407,7 +407,9 @@ object DiplomacyAutomation {
                 civInfo.getStatForRanking(RankingType.Force).toInt(),
                 enemy.getStatForRanking(RankingType.Force).toInt(),
                 (civInfo.getCivsAtWarWith().count() - 1).coerceAtLeast(0),
-                0 // War-duration tracking is not yet wired into this policy.
+                civInfo.getDiplomacyManager(enemy)!!.warStartedOnTurn.let { start ->
+                    if (start < 0) 0 else (civInfo.gameInfo.turns - start).coerceAtLeast(0)
+                }
             )
             if (pressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
                 // We can still fight. Refuse peace.
