@@ -47,9 +47,9 @@ object DiplomacyTurnManager {
                     otherCivTrades.removeAll { it.equalTrade(trade.reverse()) }
 
                     // Preserve Living Empires pacts even if a resource trade fails.
-                    val pact = trade.theirOffers.firstOrNull {
-                        it.name == LivingEmpiresTreaties.nonAggressionPact && it.duration > 0
-                    }
+                    val pact = (trade.ourOffers + trade.theirOffers)
+                        .filter { it.type == TradeOfferType.Treaty && it.name == LivingEmpiresTreaties.nonAggressionPact && it.duration > 0 }
+                        .maxByOrNull { it.duration }
                     if (pact != null) {
                         val restored = com.unciv.logic.trade.Trade()
                         restored.ourOffers.add(com.unciv.logic.trade.TradeOffer(pact.name, TradeOfferType.Treaty, duration = pact.duration))
@@ -71,6 +71,9 @@ object DiplomacyTurnManager {
                     // If you cut a trade short, we're not going to trust you with per-turn trades for a while
                     otherCivDiplomacy().setFlag(DiplomacyFlags.ResourceTradesCutShort, civInfo.gameInfo.speed.dealDuration * 2)
                     civInfo.cache.updateCivResources()
+                    // A trade with multiple unavailable resources must only be cancelled once.
+                    // Otherwise we duplicate restored treaties and notifications.
+                    break
                 }
             }
         }
