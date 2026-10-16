@@ -140,8 +140,12 @@ class NonAggressionPactIntegrationTests {
         tick.isAccessible = true
         val restoredFirst = json.fromJson(DiplomacyManager::class.java, json.toJson(firstManager))
         val restoredSecond = json.fromJson(DiplomacyManager::class.java, json.toJson(secondManager))
-        // Restored managers are detached snapshots; verify the production turn
-        // processor keeps their treaty countdown synchronized until just before expiry.
+        // A full game load reconnects transient Civilization references.
+        // Reconnect those references here before exercising the turn processor.
+        val civField = DiplomacyManager::class.java.getDeclaredField("civInfo")
+        civField.isAccessible = true
+        civField.set(restoredFirst, first)
+        civField.set(restoredSecond, second)
         repeat(9) {
             tick.invoke(DiplomacyTurnManager, restoredFirst)
             tick.invoke(DiplomacyTurnManager, restoredSecond)
