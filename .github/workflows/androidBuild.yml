@@ -31,6 +31,10 @@ on:
       - '.github/workflows/androidBuild.yml'
       - 'android/build.gradle.kts'
 
+concurrency:
+  group: android-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -71,9 +75,29 @@ jobs:
             exit 1
           fi         
       - name: Upload debug APK
+        id: apk_upload
         uses: actions/upload-artifact@v4
         with:
           name: living-empires-debug-apk
           path: android/build/outputs/apk/debug/*.apk
           if-no-files-found: error
  
+
+      - name: Publish APK download and build details
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.apk_upload.outputs.artifact-url }}
+          ARTIFACT_ID: ${{ steps.apk_upload.outputs.artifact-id }}
+          UPLOAD_OUTCOME: ${{ steps.apk_upload.outcome }}
+        run: |
+          {
+            echo '## Living Empires Android debug build'
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Upload result: $UPLOAD_OUTCOME"
+            if [ -n "$ARTIFACT_URL" ]; then
+              echo "- [Download debug APK artifact]($ARTIFACT_URL)"
+              echo "- Artifact ID: $ARTIFACT_ID"
+            else
+              echo '- APK artifact unavailable: check the upload step logs.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
