@@ -14,6 +14,29 @@ import org.junit.Test
 /** Integration tests using real Civilization instances and their diplomacy managers. */
 @RunWith(BaseTestRunner::class)
 class NonAggressionPactIntegrationTests {
+    @Test fun directWarDeclarationDoesNotBreakActivePactInRealGame() {
+        val game = TestGame()
+        val first = game.addCiv()
+        val second = game.addCiv()
+        game.addUnit("Warrior", first, null)
+        game.addUnit("Warrior", second, null)
+        game.makeHexagonalMap(4)
+        first.diplomacyFunctions.makeCivilizationsMeet(second)
+        val firstManager = first.getDiplomacyManager(second)!!
+        val secondManager = second.getDiplomacyManager(first)!!
+        val pact = Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        }
+        firstManager.trades.add(pact)
+        secondManager.trades.add(pact.reverse())
+        firstManager.declareWar()
+        secondManager.declareWar()
+        assertEquals(false, first.isAtWarWith(second))
+        assertEquals(false, second.isAtWarWith(first))
+        assertEquals(20, firstManager.turnsToNonAggressionPact())
+        assertEquals(20, secondManager.turnsToNonAggressionPact())
+    }
+
     @Test fun realCivilizationsRejectDuplicateAndWartimePacts() {
         val game = TestGame()
         val first = game.addCiv()
