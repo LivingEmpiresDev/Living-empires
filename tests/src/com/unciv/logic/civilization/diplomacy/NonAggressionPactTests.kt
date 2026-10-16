@@ -211,6 +211,35 @@ class NonAggressionPactTests {
         assertEquals(10, manager.trades.single().ourOffers.last().duration)
     }
 
+    @Test fun bilateralProductionTurnsCountDownAndRenewWithoutGameNotifications() {
+        // Exercise production turn processing for both diplomatic records.
+        // Offers on our side avoid notifications requiring a full game fixture.
+        val first = managerWithPact(true)
+        val second = managerWithPact(true)
+        for (manager in listOf(first, second)) {
+            manager.trades.single().ourOffers.add(
+                TradeOffer("stage2-unrelated-timed-offer", TradeOfferType.Treaty, duration = 30)
+            )
+        }
+        val tick = DiplomacyTurnManager::class.java.getDeclaredMethod("nextTurnTrades", DiplomacyManager::class.java)
+        tick.isAccessible = true
+        for (turn in 1..20) {
+            for (manager in listOf(first, second)) tick.invoke(DiplomacyTurnManager, manager)
+            for (manager in listOf(first, second)) {
+                assertEquals("Pact duration on turn $turn", 20 - turn, manager.turnsToNonAggressionPact())
+                assertEquals("Attack permission on turn $turn", turn == 20, manager.canAttack())
+            }
+        }
+        first.trades.add(Trade().apply {
+            ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20))
+        })
+        second.trades.add(first.trades.last().reverse())
+        for (manager in listOf(first, second)) {
+            assertEquals(20, manager.turnsToNonAggressionPact())
+            assertEquals(false, manager.canAttack())
+        }
+    }
+
     @Test fun noPactReturnsZero() {
         assertEquals(0, DiplomacyManager().turnsToNonAggressionPact())
     }
