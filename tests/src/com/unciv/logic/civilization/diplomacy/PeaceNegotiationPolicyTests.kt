@@ -24,6 +24,31 @@ class PeaceNegotiationPolicyTests {
         assertEquals(0, PeaceNegotiationPolicy.affordableReparations(-10, 100))
     }
 
+    @Test fun prolongedWarIncreasesPeacePressure() {
+        val fresh = PeaceNegotiationPolicy.peacePressure(70, 70, 0, 0)
+        val prolonged = PeaceNegotiationPolicy.peacePressure(70, 70, 0, 40)
+        assertTrue(prolonged > fresh)
+        assertEquals(20, prolonged - fresh)
+    }
+
+    @Test fun warExhaustionIsBounded() {
+        assertEquals(
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, 100),
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, 10000)
+        )
+        assertEquals(
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, 0),
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, -20)
+        )
+    }
+
+    @Test fun cityConcessionLimitsAreEnforced() {
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(0, 0))
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(2, 1))
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(4, -1))
+        assertTrue(PeaceNegotiationPolicy.canConcedeCity(4, 0))
+    }
+
     @Test fun cannotConcedeFinalCity() {
         assertFalse(PeaceNegotiationPolicy.canConcedeCity(1, 0))
         assertFalse(PeaceNegotiationPolicy.canConcedeCity(3, 2))
