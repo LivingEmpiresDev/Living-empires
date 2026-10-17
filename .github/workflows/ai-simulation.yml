@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - 'feature/headless-simulation-runner'
+      - 'integration/simulation-master-20261017'
     paths:
       - 'core/src/com/unciv/logic/GameSimulationRunner.kt'
       - 'core/src/com/unciv/logic/civilization/diplomacy/DiplomacyManager.kt'
