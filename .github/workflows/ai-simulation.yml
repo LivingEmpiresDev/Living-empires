@@ -11,6 +11,7 @@ on:
       - 'tests/src/com/unciv/dev/OjhBenchmark.kt'
       - '.github/workflows/ai-simulation.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'core/src/com/unciv/logic/GameSimulationRunner.kt'
       - 'core/src/com/unciv/logic/civilization/diplomacy/DiplomacyManager.kt'
