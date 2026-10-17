@@ -164,6 +164,8 @@ object DeclareWar {
             removeDefensivePacts(diplomacyManager)
         }
         diplomacyManager.diplomaticStatus = DiplomaticStatus.War
+        diplomacyManager.warStartedOnTurn = diplomacyManager.civInfo.gameInfo.turns
+        diplomacyManager.otherCivDiplomacy().warStartedOnTurn = diplomacyManager.civInfo.gameInfo.turns
         
         val theirDiplomacy = diplomacyManager.otherCiv.getDiplomacyManager(diplomacyManager.civInfo)!!
         // if we broke our promise to not attack them

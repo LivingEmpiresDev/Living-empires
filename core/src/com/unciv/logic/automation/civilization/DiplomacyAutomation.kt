@@ -7,8 +7,9 @@ import com.unciv.logic.automation.civilization.MotivationToAttackAutomation.hasA
 import com.unciv.logic.civilization.AlertType
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.civilization.PopupAlert
-import com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
+import com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties
+import com.unciv.logic.civilization.diplomacy.PeaceNegotiationPolicy
 import com.unciv.logic.civilization.diplomacy.DiplomacyManager
 import com.unciv.logic.civilization.diplomacy.DiplomaticModifiers
 import com.unciv.logic.civilization.diplomacy.DiplomaticStatus
@@ -402,7 +403,15 @@ object DiplomacyAutomation {
             .toList()
 
         for (enemy in enemiesCiv) {
-            if (hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
+            val pressure = PeaceNegotiationPolicy.peacePressure(
+                civInfo.getStatForRanking(RankingType.Force).toInt(),
+                enemy.getStatForRanking(RankingType.Force).toInt(),
+                (civInfo.getCivsAtWarWith().count() - 1).coerceAtLeast(0),
+                civInfo.getDiplomacyManager(enemy)!!.warStartedOnTurn.let { start ->
+                    if (start < 0) 0 else (civInfo.gameInfo.turns - start).coerceAtLeast(0)
+                }
+            )
+            if (pressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
                 // We can still fight. Refuse peace.
                 continue
             }
@@ -423,17 +432,33 @@ object DiplomacyAutomation {
             tradeLogic.currentTrade.theirOffers.add(tradeOffer)
 
             if (enemy.isMajorCiv()) {
-                var moneyWeNeedToPay = -TradeEvaluation().evaluatePeaceCostForThem(civInfo, enemy)
+                val moneyWeNeedToPay = -TradeEvaluation().evaluatePeaceCostForThem(civInfo, enemy)
 
-                if (civInfo.gold > 0 && moneyWeNeedToPay > 0) {
-                    if (moneyWeNeedToPay > civInfo.gold) {
-                        moneyWeNeedToPay = civInfo.gold  // As much as possible
+                if (moneyWeNeedToPay > 0) {
+                    val immediate = PeaceNegotiationPolicy.affordableReparations(moneyWeNeedToPay, civInfo.gold)
+                    if (immediate > 0)
+                        tradeLogic.currentTrade.ourOffers.add(
+                            TradeOffer(Constants.flatGold, TradeOfferType.Gold, immediate, civInfo.gameInfo.speed)
+                        )
+                    val remaining = moneyWeNeedToPay - immediate
+                    val duration = civInfo.gameInfo.speed.dealDuration
+                    val affordableGpt = civInfo.stats.statsForNextTurn.gold.toInt().coerceAtLeast(0)
+                    val gpt = if (duration > 0) ((remaining.toLong() * 5 + duration * 4L - 1) / (duration * 4L))
+                        .coerceAtMost(affordableGpt.toLong()).toInt() else 0
+                    if (gpt > 0)
+                        tradeLogic.currentTrade.ourOffers.add(
+                            TradeOffer(Constants.goldPerTurn, TradeOfferType.Gold_Per_Turn, gpt, civInfo.gameInfo.speed)
+                        )
+                    // When cash and sustainable GPT are insufficient, offer one non-capital city.
+                    if (remaining > 0 && gpt.toLong() * duration * 4 / 5 < remaining
+                        && PeaceNegotiationPolicy.canConcedeCity(civInfo.cities.size, 0)) {
+                        val concession = tradeLogic.ourAvailableOffers.firstOrNull {
+                            it.type == TradeOfferType.City && civInfo.getCapital()?.id != it.name
+                        }
+                        if (concession != null) tradeLogic.currentTrade.ourOffers.add(concession)
                     }
-                    tradeLogic.currentTrade.ourOffers.add(
-                        TradeOffer("Gold", TradeOfferType.Gold, moneyWeNeedToPay, civInfo.gameInfo.speed)
-                    )
                 } else if (moneyWeNeedToPay < -100) {
-                    val moneyTheyNeedToPay = abs(moneyWeNeedToPay).coerceAtMost(enemy.gold)
+                    val moneyTheyNeedToPay = PeaceNegotiationPolicy.affordableReparations(abs(moneyWeNeedToPay), enemy.gold)
                     if (moneyTheyNeedToPay > 0) {
                         tradeLogic.currentTrade.theirOffers.add(
                             TradeOffer("Gold", TradeOfferType.Gold, moneyTheyNeedToPay, civInfo.gameInfo.speed)
