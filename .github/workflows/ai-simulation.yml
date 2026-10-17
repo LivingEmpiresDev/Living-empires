@@ -2,6 +2,14 @@ name: AI Simulation Smoke Test
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'feature/headless-simulation-runner'
+    paths:
+      - 'core/src/com/unciv/logic/GameSimulationRunner.kt'
+      - 'core/src/com/unciv/logic/civilization/diplomacy/DiplomacyManager.kt'
+      - 'tests/src/com/unciv/dev/OjhBenchmark.kt'
+      - '.github/workflows/ai-simulation.yml'
   pull_request:
     paths:
       - 'core/src/com/unciv/logic/GameSimulationRunner.kt'
