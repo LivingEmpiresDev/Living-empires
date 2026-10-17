@@ -23,7 +23,7 @@ jobs:
       - name: Simulate ten 250-turn games with four AI civilizations
         run: |
           set -o pipefail
-          ./gradlew :tests:ojh -Pojh.args="simulate --games 10 --turns 250 --players 4 --size small --seed 20261015" --console=plain | tee simulation.log
+          ./gradlew :tests:ojh -Pojh.args="simulate --games 10 --turns 250 --players 4 --size small --seed 20261017" --console=plain | tee simulation.log
       - name: Upload simulation log
         if: always()
         uses: actions/upload-artifact@v4
