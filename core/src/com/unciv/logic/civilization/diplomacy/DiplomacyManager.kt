@@ -219,6 +219,36 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * As for why it's String and not DiplomaticModifier see FlagsCountdown comment */
     var diplomaticModifiers = HashMap<String, Float>()
 
+    /** Stage 5: per-opponent war fatigue, persisted in saves and bounded to 0..100. */
+    var warExhaustion = 0f
+        private set
+
+    /** Number of turns spent in the current war with this opponent. */
+    var turnsAtWar = 0
+        private set
+
+    /** War fatigue increases the military motivation required to reject a peace offer. */
+    @Readonly fun peaceMotivationThreshold(): Float =
+        10f + if (diplomaticStatus == DiplomaticStatus.War) warExhaustion.coerceIn(0f, 100f) / 10f else 0f
+
+    /** Called independently for each side on its civilization turn. */
+    internal fun advanceWarExhaustion() {
+        val speed = civInfo.gameInfo.speed.modifier.coerceAtLeast(0.01f)
+        if (diplomaticStatus == DiplomaticStatus.War && civInfo.isMajorCiv() && otherCiv.isMajorCiv()) {
+            turnsAtWar = (turnsAtWar + 1).coerceAtMost(10000)
+            warExhaustion = (warExhaustion + 1f / speed).coerceAtMost(100f)
+        } else {
+            turnsAtWar = 0
+            warExhaustion = (warExhaustion - 2f / speed).coerceAtLeast(0f)
+        }
+    }
+
+    /** A new war starts a fresh fatigue counter; any peace-time fatigue has no immediate effect. */
+    internal fun resetWarExhaustionForNewWar() {
+        turnsAtWar = 0
+        warExhaustion = 0f
+    }
+
     /** For city-states. Influence is saved in the CITY STATE -> major civ Diplomacy, NOT in the major civ -> city state diplomacy.
      * Access via getInfluence() and setInfluence() unless you know what you're doing.
      * Note that not using the setter skips recalculating the ally and bounds checks,
@@ -271,6 +301,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.influence = influence
         toReturn.flagsCountdown.putAll(flagsCountdown)
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
+        toReturn.warExhaustion = warExhaustion
+        toReturn.turnsAtWar = turnsAtWar
         toReturn.totalOfScienceDuringRA = totalOfScienceDuringRA
         toReturn.smoothedOpinionOfOtherCiv = smoothedOpinionOfOtherCiv
         toReturn.cachedSmoothedOpinionOfOtherCiv = cachedSmoothedOpinionOfOtherCiv
@@ -614,6 +646,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     /** Should only be called from makePeace */
     private fun makePeaceOneSide() {
         diplomaticStatus = DiplomaticStatus.Peace
+        turnsAtWar = 0
         val otherCiv = otherCiv
         // Get out of others' territory
         for (unit in civInfo.units.getCivUnits().filter { it.getTile().getOwner() == otherCiv }.toList())
