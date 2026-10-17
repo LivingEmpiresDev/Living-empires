@@ -432,7 +432,7 @@ object DiplomacyAutomation {
             tradeLogic.currentTrade.theirOffers.add(tradeOffer)
 
             if (enemy.isMajorCiv()) {
-                var moneyWeNeedToPay = -TradeEvaluation().evaluatePeaceCostForThem(civInfo, enemy)
+                val moneyWeNeedToPay = -TradeEvaluation().evaluatePeaceCostForThem(civInfo, enemy)
 
                 if (moneyWeNeedToPay > 0) {
                     val immediate = PeaceNegotiationPolicy.affordableReparations(moneyWeNeedToPay, civInfo.gold)
