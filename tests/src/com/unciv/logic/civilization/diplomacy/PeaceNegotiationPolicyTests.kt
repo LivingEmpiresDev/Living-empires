@@ -54,4 +54,16 @@ class PeaceNegotiationPolicyTests {
         assertFalse(PeaceNegotiationPolicy.canConcedeCity(3, 2))
         assertTrue(PeaceNegotiationPolicy.canConcedeCity(3, 1))
     }
+    @Test fun extremeForceValuesRemainBounded() {
+        assertEquals(0, PeaceNegotiationPolicy.peacePressure(Int.MAX_VALUE, Int.MAX_VALUE, 0, 0))
+        assertEquals(100, PeaceNegotiationPolicy.peacePressure(0, Int.MAX_VALUE, 0, 0))
+        assertEquals(-100, PeaceNegotiationPolicy.peacePressure(Int.MAX_VALUE, 0, 0, 0))
+    }
+
+    @Test fun excessWarFrontsAreCapped() {
+        assertEquals(
+            PeaceNegotiationPolicy.peacePressure(50, 50, 10, 0),
+            PeaceNegotiationPolicy.peacePressure(50, 50, Int.MAX_VALUE, 0)
+        )
+    }
 }
