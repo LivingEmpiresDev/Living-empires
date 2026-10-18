@@ -82,7 +82,9 @@ class LivingEmpiresDiplomacyRegressionTest {
 
     @Test fun diplomacyClonePreservesWarHistoryAndTreatyState() {
         val original = DiplomacyManager()
-        // clone() copies the required serialized opponent identifier.\n        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")\n        original.warStartedOnTurn = 37
+        // clone() copies the required serialized opponent identifier.
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.warStartedOnTurn = 37
         original.diplomaticStatus = DiplomaticStatus.War
         original.setFlag(DiplomacyFlags.DefensivePact, 12)
         val trade = Trade()
