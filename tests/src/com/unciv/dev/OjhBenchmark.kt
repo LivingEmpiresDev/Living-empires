@@ -343,6 +343,11 @@ object OjhBenchmark {
             // Verify the AI routine also handles a cleared cooldown without
             // creating duplicate requests when invoked twice in one turn.
             aiManager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+            // A freshly declared war carries DeclaredWar cooldown flags on both sides.
+            // Clear them to make this a legitimate long-running-war peace scenario.
+            aiManager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)
+            defender.getDiplomacyManager(aggressor)!!.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)
+            aiManager.warStartedOnTurn = aggressor.gameInfo.turns - 50
             val beforeRepeat = defender.tradeRequests.count {
                 it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
             }
