@@ -395,6 +395,17 @@ object OjhBenchmark {
             }
             check(afterSecond > beforeRepeat) { "SIM expected an actual AI peace proposal after settling and multi-front war pressure" }
             note("SIM scenario aiPeaceOfferTerms=passed inspected=${afterSecond - beforeRepeat}")
+            val actualOffer = defender.tradeRequests.first {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            check(actualOffer.trade.ourOffers.any {
+                it.name == Constants.peaceTreaty && it.duration > 0
+            })
+            check(actualOffer.trade.theirOffers.any {
+                it.name == Constants.peaceTreaty && it.duration > 0
+            })
+            note("SIM scenario aiPeaceOfferDuration=passed")
+
 
 
 
