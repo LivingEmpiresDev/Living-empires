@@ -134,9 +134,9 @@ object DiplomacyAutomation {
             if (diplomacy.ambassadorName != null) continue
             val firstNames = listOf("Amara", "Darius", "Mira", "Niko", "Sana", "Tarek", "Leona", "Ilya")
             val familyNames = listOf("Vale", "Arden", "Solari", "Maren", "Renn", "Kade", "Voss", "Sorin")
-            val seed = (civInfo.civID + ":" + otherCiv.civID).hashCode()
-            val first = firstNames[(seed.toLong() and 0x7fffffffL).rem(firstNames.size).toInt()]
-            val family = familyNames[((seed.toLong() ushr 8) and 0x7fffffffL).rem(familyNames.size).toInt()]
+            val seed = (civInfo.civID + ":" + otherCiv.civID).hashCode().toLong()
+            val first = firstNames[(seed and 0x7fffffffL).rem(firstNames.size).toInt()]
+            val family = familyNames[((seed ushr 8) and 0x7fffffffL).rem(familyNames.size).toInt()]
             diplomacy.appointAmbassador("$" + "{first} $" + "{family}")
         }
     }
