@@ -58,4 +58,26 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(20, manager.getFlag(DiplomacyFlags.DefensivePact))
         assertEquals(0, manager.getFlag(DiplomacyFlags.DeclinedPeace))
     }
+    @Test fun activeNonAggressionPactPreventsAttacks() {
+        val manager = DiplomacyManager()
+        val trade = Trade()
+        val pact = TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20)
+        trade.ourOffers.add(pact)
+        manager.trades.add(trade)
+        assertFalse(manager.canAttack())
+        pact.duration = 0
+        assertTrue(manager.canAttack())
+    }
+
+    @Test fun peaceTreatyPreventsAttacksIndependently() {
+        val manager = DiplomacyManager()
+        val trade = Trade()
+        val peace = TradeOffer(Constants.peaceTreaty, TradeOfferType.Treaty, duration = 10)
+        trade.ourOffers.add(peace)
+        manager.trades.add(trade)
+        assertFalse(manager.canAttack())
+        peace.duration = 0
+        assertTrue(manager.canAttack())
+    }
+
 }
