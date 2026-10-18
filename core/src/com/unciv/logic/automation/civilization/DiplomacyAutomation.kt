@@ -124,7 +124,20 @@ object DiplomacyAutomation {
      * 
      * @param civInfo Civilization which initiates trade
      */
+    /** Assign an AI representative only after an embassy actually exists.
+     * Keep existing player-controlled assignments untouched. */
+    internal fun appointEmbassyRepresentatives(civInfo: Civilization) {
+        if (!civInfo.isMajorCiv() || civInfo.isPlayerCivilization()) return
+        for (otherCiv in civInfo.getKnownCivs()) {
+            if (!otherCiv.isMajorCiv()) continue
+            val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
+            if (diplomacy.ambassadorName != null) continue
+            diplomacy.appointAmbassador("Envoy of " + civInfo.civName)
+        }
+    }
+
     internal fun offerToEstablishEmbassy(civInfo: Civilization) {
+        appointEmbassyRepresentatives(civInfo)
         if (civInfo.getCapital() == null) return
         val civsThatWeCanEstablishEmbassyWith = civInfo.getKnownCivs().filter {
             civInfo.diplomacyFunctions.canEstablishEmbassyWith(it)
