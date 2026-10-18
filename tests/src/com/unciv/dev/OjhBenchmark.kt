@@ -227,6 +227,20 @@ object OjhBenchmark {
                 peace.duration = 0
                 check(manager.canAttack())
                 note("SIM scenario overlappingPeaceAndNonAggression=passed")
+                // A defensive pact timer and rejected-peace cooldown are
+                // independent, including after cloning diplomacy for save state.
+                manager.setFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact, 20)
+                manager.setFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace, 5)
+                val saved = manager.clone()
+                check(saved.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact) == 20)
+                check(saved.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace) == 5)
+                saved.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+                check(saved.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact) == 20)
+                check(manager.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace) == 5)
+                manager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)
+                manager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+                note("SIM scenario defensivePactAndPeaceCooldownClone=passed")
+
 
             } finally {
                 manager.trades.remove(temporary)
