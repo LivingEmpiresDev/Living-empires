@@ -19,6 +19,8 @@ jobs:
         with:
           packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
+      - name: Verify simulation validator catches malformed traces
+        run: python3 -m unittest discover -s scripts/simulation -p 'test_*.py' -v
       - name: Run existing game regression tests
         run: ./gradlew :tests:test --stacktrace
       - name: Build Android debug APK
