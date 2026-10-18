@@ -22,6 +22,7 @@ object DiplomacyTurnManager {
         removeUntenableTrades()
         updateHasOpenBorders()
         nextTurnDiplomaticModifiers()
+        advanceWarExhaustion()
         nextTurnFlags()
         if (civInfo.isCityState && otherCiv.isMajorCiv())
             nextTurnCityStateInfluence()
