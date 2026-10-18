@@ -411,6 +411,13 @@ object OjhBenchmark {
                 "SIM AI peace proposal ended the war without acceptance"
             }
             note("SIM scenario aiPeaceOfferPending=passed")
+            // The offer must be addressed to the opposing civilization and
+            // identify the aggressor as the requesting civilization.
+            check(defender.tradeRequests.any {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }) { "SIM generated peace offer missing from defender inbox" }
+            note("SIM scenario aiPeaceOfferDelivery=passed")
+
 
 
 
