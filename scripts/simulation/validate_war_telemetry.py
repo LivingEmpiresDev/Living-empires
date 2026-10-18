@@ -14,6 +14,14 @@ def validate(content: str, expected_turns: int) -> None:
         raise ValueError(f"war telemetry missing, duplicated or out of order: expected {expected_turns} contiguous records, got {len(actual)}")
     if any(w < 0 for _, w in observations):
         raise ValueError("negative war-pair count")
+    transitions = [(int(t), int(start), int(end)) for t, start, end in TRANSITIONS.findall(content)]
+    if [t for t, _, _ in transitions] != expected:
+        raise ValueError("war transition telemetry missing, duplicated or out of order")
+    previous = 0
+    for (turn, wars), (_, started, ended) in zip(observations, transitions):
+        if wars != previous + started - ended:
+            raise ValueError(f"war-count conservation failed on turn {turn}: {previous} + {started} - {ended} != {wars}")
+        previous = wars
     print(f"Validated {expected_turns} contiguous war-state observations; max simultaneous pairs={max(w for _, w in observations)}")
 
 if __name__ == "__main__":
