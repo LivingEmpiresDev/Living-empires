@@ -103,4 +103,36 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(12, original.getFlag(DiplomacyFlags.DefensivePact))
     }
 
+    @Test fun overlappingTreatiesBlockAttacksUntilBothExpire() {
+        val manager = DiplomacyManager()
+        val trade = Trade()
+        val pact = TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 20)
+        val peace = TradeOffer(Constants.peaceTreaty, TradeOfferType.Treaty, duration = 10)
+        trade.ourOffers.add(pact)
+        trade.ourOffers.add(peace)
+        manager.trades.add(trade)
+        assertFalse(manager.canAttack())
+        pact.duration = 0
+        assertFalse(manager.canAttack())
+        peace.duration = 0
+        assertTrue(manager.canAttack())
+    }
+
+    @Test fun multipleNonAggressionTradesRespectLongestRemainingDuration() {
+        val manager = DiplomacyManager()
+        val first = Trade()
+        first.ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 3))
+        val second = Trade()
+        second.theirOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 14))
+        manager.trades.add(first)
+        manager.trades.add(second)
+        assertEquals(14, manager.turnsToNonAggressionPact())
+        assertFalse(manager.canAttack())
+        second.theirOffers.first().duration = 0
+        assertEquals(3, manager.turnsToNonAggressionPact())
+        assertFalse(manager.canAttack())
+        first.ourOffers.first().duration = 0
+        assertTrue(manager.canAttack())
+    }
+
 }
