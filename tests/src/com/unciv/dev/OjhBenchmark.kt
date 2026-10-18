@@ -405,6 +405,13 @@ object OjhBenchmark {
                 it.name == Constants.peaceTreaty && it.duration > 0
             })
             note("SIM scenario aiPeaceOfferDuration=passed")
+            // A peace proposal is not itself a signed treaty: neither side
+            // should leave the war until the request is accepted.
+            check(aggressor.isAtWarWith(defender) && defender.isAtWarWith(aggressor)) {
+                "SIM AI peace proposal ended the war without acceptance"
+            }
+            note("SIM scenario aiPeaceOfferPending=passed")
+
 
 
 
