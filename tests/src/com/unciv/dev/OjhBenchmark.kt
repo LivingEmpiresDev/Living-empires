@@ -268,6 +268,17 @@ object OjhBenchmark {
             check(ally.isAtWarWith(aggressor)) { "SIM defensive ally failed to join war" }
             check(!defender.isAtWarWith(ally)) { "SIM defensive allies entered war against each other" }
             note("SIM scenario defensiveIntervention=passed")
+            // Resolve the deliberately created war through the production peace
+            // transition and verify both sides agree on the resulting state.
+            val peaceManager = defender.getDiplomacyManager(aggressor)!!
+            peaceManager.makePeace()
+            check(!defender.isAtWarWith(aggressor)) { "SIM defender remained at war after peace" }
+            check(!aggressor.isAtWarWith(defender)) { "SIM aggressor remained at war after peace" }
+            check(peaceManager.diplomaticStatus == com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            check(aggressor.getDiplomacyManager(defender)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            note("SIM scenario bilateralPeace=passed")
+
         }
         var previousWarPairs: Set<String> = emptySet()
         var observedWarStart = false
