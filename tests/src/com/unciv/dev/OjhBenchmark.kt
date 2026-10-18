@@ -197,6 +197,21 @@ object OjhBenchmark {
                 }
             }
             if (activePacts.isNotEmpty()) note("SIM defensivePacts turn=$turn entries=${activePacts.sorted().joinToString(",")}")
+            // Preserve the full context of the first asymmetric pact observation.
+            // This is diagnostic evidence, not a replacement for the invariant.
+            for (civ in info.civilizations) {
+                for ((otherName, manager) in civ.diplomacy) {
+                    val other = info.civilizations.firstOrNull { it.civName == otherName } ?: continue
+                    val reverse = other.diplomacy[civ.civName] ?: continue
+                    val defensive = com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact
+                    if ((manager.diplomaticStatus == defensive) != (reverse.diplomaticStatus == defensive)) {
+                        note("SIM pactMismatch turn=$turn civ=${civ.civName} other=$otherName " +
+                            "forwardStatus=${manager.diplomaticStatus} reverseStatus=${reverse.diplomaticStatus} " +
+                            "forwardFlag=${manager.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)} " +
+                            "reverseFlag=${reverse.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)}")
+                    }
+                }
+            }
             // Enforce reciprocal diplomacy state for actual simulated civilizations.
             // Defensive pacts and war declarations must agree on both sides.
             for (civ in info.civilizations) {
