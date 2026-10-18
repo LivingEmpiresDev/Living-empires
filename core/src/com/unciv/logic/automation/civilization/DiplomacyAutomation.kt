@@ -137,7 +137,7 @@ object DiplomacyAutomation {
             val seed = (civInfo.civID + ":" + otherCiv.civID).hashCode().toLong()
             val first = firstNames[(seed and 0x7fffffffL).rem(firstNames.size).toInt()]
             val family = familyNames[((seed ushr 8) and 0x7fffffffL).rem(familyNames.size).toInt()]
-            diplomacy.appointAmbassador("$" + "{first} $" + "{family}")
+            diplomacy.appointAmbassador(first + " " + family)
         }
     }
 
