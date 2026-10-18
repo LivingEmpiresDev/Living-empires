@@ -234,7 +234,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         10f + if (diplomaticStatus == DiplomaticStatus.War) warExhaustion.coerceIn(0f, 100f) / 10f else 0f
 
     /** Called independently for each side on its civilization turn. */
-    internal fun advanceWarExhaustion() {
+    fun advanceWarExhaustion() {
         val speed = civInfo.gameInfo.speed.modifier.coerceAtLeast(0.01f)
         if (diplomaticStatus == DiplomaticStatus.War && civInfo.isMajorCiv() && otherCiv.isMajorCiv()) {
             turnsAtWar = (turnsAtWar + 1).coerceAtMost(10000)
@@ -246,7 +246,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     }
 
     /** A new war starts a fresh fatigue counter; any peace-time fatigue has no immediate effect. */
-    internal fun resetWarExhaustionForNewWar() {
+    fun resetWarExhaustionForNewWar() {
         turnsAtWar = 0
         warExhaustion = 0f
     }
