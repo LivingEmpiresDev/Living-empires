@@ -151,4 +151,19 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(5, original.getFlag(DiplomacyFlags.DeclinedPeace))
     }
 
+    @Test fun nonAggressionAttackGuardTracksEveryTurnOfTwentyTurnCountdown() {
+        val manager = DiplomacyManager()
+        val trade = Trade()
+        val pact = TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = LivingEmpiresTreaties.duration)
+        trade.ourOffers.add(pact)
+        manager.trades.add(trade)
+        for (remaining in LivingEmpiresTreaties.duration downTo 1) {
+            assertEquals(remaining, manager.turnsToNonAggressionPact())
+            assertFalse("Attacks must be blocked with $remaining pact turns remaining", manager.canAttack())
+            pact.duration -= 1
+        }
+        assertEquals(0, manager.turnsToNonAggressionPact())
+        assertTrue("Attacks should become available only after expiry", manager.canAttack())
+    }
+
 }
