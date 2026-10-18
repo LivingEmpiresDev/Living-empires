@@ -80,4 +80,25 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertTrue(manager.canAttack())
     }
 
+    @Test fun diplomacyClonePreservesWarHistoryAndTreatyState() {
+        val original = DiplomacyManager()
+        original.warStartedOnTurn = 37
+        original.diplomaticStatus = DiplomaticStatus.War
+        original.setFlag(DiplomacyFlags.DefensivePact, 12)
+        val trade = Trade()
+        trade.ourOffers.add(TradeOffer(LivingEmpiresTreaties.nonAggressionPact, TradeOfferType.Treaty, duration = 8))
+        original.trades.add(trade)
+
+        val copy = original.clone()
+        assertEquals(37, copy.warStartedOnTurn)
+        assertEquals(DiplomaticStatus.War, copy.diplomaticStatus)
+        assertEquals(12, copy.getFlag(DiplomacyFlags.DefensivePact))
+        assertEquals(8, copy.turnsToNonAggressionPact())
+
+        copy.trades.first().ourOffers.first().duration = 0
+        copy.removeFlag(DiplomacyFlags.DefensivePact)
+        assertEquals(8, original.turnsToNonAggressionPact())
+        assertEquals(12, original.getFlag(DiplomacyFlags.DefensivePact))
+    }
+
 }
