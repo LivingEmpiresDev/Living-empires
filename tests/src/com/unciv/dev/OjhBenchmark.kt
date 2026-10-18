@@ -360,6 +360,7 @@ object OjhBenchmark {
                     com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar
                 )
             }
+            note("SIM peaceEligibility aggressorCities=${aggressor.cities.size} defenderCities=${defender.cities.size} activeWars=${aggressor.getCivsAtWarWith().size} declaredWarFlag=${aiManager.hasFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)} declinedPeaceFlag=${aiManager.hasFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)}")
             val beforeRepeat = defender.tradeRequests.count {
                 it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
             }
