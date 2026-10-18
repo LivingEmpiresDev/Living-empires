@@ -37,6 +37,40 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `war exhaustion accumulates per turn and resets for a new war`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        val theirDiplomacy = b.getDiplomacyManager(a)!!
+        ourDiplomacy.diplomaticStatus = DiplomaticStatus.War
+        theirDiplomacy.diplomaticStatus = DiplomaticStatus.War
+
+        ourDiplomacy.advanceWarExhaustion()
+        assertTrue(ourDiplomacy.warExhaustion > 0f)
+        assertEquals(1, ourDiplomacy.turnsAtWar)
+        assertEquals(0f, theirDiplomacy.warExhaustion)
+
+        ourDiplomacy.resetWarExhaustionForNewWar()
+        assertEquals(0f, ourDiplomacy.warExhaustion)
+        assertEquals(0, ourDiplomacy.turnsAtWar)
+    }
+
+    @Test
+    fun `war exhaustion survives diplomacy cloning and cools after peace`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        repeat(3) { diplomacy.advanceWarExhaustion() }
+        val copy = diplomacy.clone()
+        assertEquals(diplomacy.warExhaustion, copy.warExhaustion)
+        assertEquals(diplomacy.turnsAtWar, copy.turnsAtWar)
+
+        diplomacy.diplomaticStatus = DiplomaticStatus.Peace
+        diplomacy.advanceWarExhaustion()
+        assertTrue(diplomacy.warExhaustion < copy.warExhaustion)
+        assertEquals(0, diplomacy.turnsAtWar)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
