@@ -340,6 +340,23 @@ object OjhBenchmark {
             }
             check(requestsAfter == requestsBefore) { "SIM AI offered peace during DeclinedPeace cooldown" }
             note("SIM scenario aiPeaceCooldown=passed")
+            // Verify the AI routine also handles a cleared cooldown without
+            // creating duplicate requests when invoked twice in one turn.
+            aiManager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+            val beforeRepeat = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            peaceMethod.invoke(automation, aggressor)
+            val afterFirst = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            peaceMethod.invoke(automation, aggressor)
+            val afterSecond = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            check(afterSecond == afterFirst) { "SIM duplicate AI peace proposals in same turn" }
+            note("SIM scenario aiPeaceOfferDedup=passed generated=${afterFirst - beforeRepeat}")
+
 
 
 
