@@ -1,0 +1,69 @@
+package com.unciv.logic.civilization.diplomacy
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PeaceNegotiationPolicyTests {
+    @Test fun losingSideHasMorePeacePressure() {
+        val losing = PeaceNegotiationPolicy.peacePressure(20, 100, 0, 0)
+        val winning = PeaceNegotiationPolicy.peacePressure(100, 20, 0, 0)
+        assertTrue(losing > winning)
+    }
+
+    @Test fun additionalWarsIncreasePressure() {
+        val single = PeaceNegotiationPolicy.peacePressure(50, 50, 0, 0)
+        val multiple = PeaceNegotiationPolicy.peacePressure(50, 50, 2, 0)
+        assertTrue(multiple > single)
+    }
+
+    @Test fun reparationsCannotExceedAvailableGold() {
+        assertEquals(200, PeaceNegotiationPolicy.affordableReparations(500, 200))
+        assertEquals(0, PeaceNegotiationPolicy.affordableReparations(500, -1))
+        assertEquals(0, PeaceNegotiationPolicy.affordableReparations(-10, 100))
+    }
+
+    @Test fun prolongedWarIncreasesPeacePressure() {
+        val fresh = PeaceNegotiationPolicy.peacePressure(70, 70, 0, 0)
+        val prolonged = PeaceNegotiationPolicy.peacePressure(70, 70, 0, 40)
+        assertTrue(prolonged > fresh)
+        assertEquals(20, prolonged - fresh)
+    }
+
+    @Test fun warExhaustionIsBounded() {
+        assertEquals(
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, 100),
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, 10000)
+        )
+        assertEquals(
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, 0),
+            PeaceNegotiationPolicy.peacePressure(50, 50, 0, -20)
+        )
+    }
+
+    @Test fun cityConcessionLimitsAreEnforced() {
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(0, 0))
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(2, 1))
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(4, -1))
+        assertTrue(PeaceNegotiationPolicy.canConcedeCity(4, 0))
+    }
+
+    @Test fun cannotConcedeFinalCity() {
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(1, 0))
+        assertFalse(PeaceNegotiationPolicy.canConcedeCity(3, 2))
+        assertTrue(PeaceNegotiationPolicy.canConcedeCity(3, 1))
+    }
+    @Test fun extremeForceValuesRemainBounded() {
+        assertEquals(0, PeaceNegotiationPolicy.peacePressure(Int.MAX_VALUE, Int.MAX_VALUE, 0, 0))
+        assertEquals(100, PeaceNegotiationPolicy.peacePressure(0, Int.MAX_VALUE, 0, 0))
+        assertEquals(-100, PeaceNegotiationPolicy.peacePressure(Int.MAX_VALUE, 0, 0, 0))
+    }
+
+    @Test fun excessWarFrontsAreCapped() {
+        assertEquals(
+            PeaceNegotiationPolicy.peacePressure(50, 50, 10, 0),
+            PeaceNegotiationPolicy.peacePressure(50, 50, Int.MAX_VALUE, 0)
+        )
+    }
+}
