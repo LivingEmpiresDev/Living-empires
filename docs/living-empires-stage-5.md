@@ -13,6 +13,14 @@ The Advanced Embassy Expansion is part of the approved long-term roadmap. Stage 
 - Passing CI is not proof of complete AI simulations, save/load behavior or player acceptance.
 - Existing embassy mechanics must be audited before replacing or extending their data model.
 
+## Embassy and reputation audit — existing extension points
+- `DiplomacyFunctions.canOfferEmbassyTo`, `canEstablishEmbassyWith`, `meetsEmbassyRequirementFor` and `removeEmbassies` already manage embassy eligibility and closure.
+- `DiplomacyAutomation.offerToEstablishEmbassy` and `wantsToAcceptEmbassy` already handle AI embassy offers and acceptance.
+- `TradeEvaluation` and `TradeOfferType.Embassy` already handle embassy trade valuation.
+- `DiplomacyManager` already has `EstablishedEmbassy`, `ReceivedEmbassy`, `SharedEmbassies`, denunciation, betrayal and `UnacceptableDemands` modifiers.
+- **Implementation decision:** extend the existing embassy/trade/modifier lifecycle rather than create a second embassy state machine. Audit the exact persisted diplomacy state and city-capital-loss behavior before adding ambassador assignments.
+- **Important:** existing denunciation and demand mechanics are not equivalent to the proposed expanded reputation and diplomatic mission systems; assess player UI and AI hooks before declaring those features complete.
+
 ## Stage 5 scope and implementation order
 1. **Baseline and persistence audit:** trace existing embassy representation, diplomacy modifiers, trade/AI interfaces, save/load serialization and Stage 2–4 treaties; document extension points.
 2. **Reputation and trust:** implement bounded, persistent consequences for treaty betrayal, aggression and diplomatic conduct, with decay and AI usage; reuse existing modifiers.
