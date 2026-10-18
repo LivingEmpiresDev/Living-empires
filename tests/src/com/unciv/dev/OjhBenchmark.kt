@@ -330,8 +330,8 @@ object OjhBenchmark {
             // Kotlin internal members are not callable across the core/tests
             // module boundary; invoke the compiled core method reflectively.
             val automation = com.unciv.logic.automation.civilization.DiplomacyAutomation
-            val peaceMethod = automation.javaClass.declaredMethods.single {
-                it.name == "offerPeaceTreaty" && it.parameterTypes.size == 1
+            val peaceMethod = automation.javaClass.declaredMethods.first {
+                it.name.startsWith("offerPeaceTreaty") && it.parameterTypes.contentEquals(arrayOf(com.unciv.logic.civilization.Civilization::class.java))
             }
             peaceMethod.isAccessible = true
             peaceMethod.invoke(automation, aggressor)
