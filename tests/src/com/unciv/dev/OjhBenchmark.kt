@@ -417,6 +417,17 @@ object OjhBenchmark {
                 it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
             }) { "SIM generated peace offer missing from defender inbox" }
             note("SIM scenario aiPeaceOfferDelivery=passed")
+            // Accept the generated proposal through production trade logic,
+            // not by calling makePeace directly.
+            val acceptance = com.unciv.logic.trade.TradeLogic(defender, aggressor)
+            acceptance.currentTrade.ourOffers.addAll(actualOffer.trade.ourOffers)
+            acceptance.currentTrade.theirOffers.addAll(actualOffer.trade.theirOffers)
+            acceptance.acceptTrade()
+            check(!defender.isAtWarWith(aggressor) && !aggressor.isAtWarWith(defender)) {
+                "SIM accepted AI peace proposal did not resolve bilateral war"
+            }
+            note("SIM scenario aiPeaceOfferAcceptance=passed")
+
 
 
 
