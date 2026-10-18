@@ -123,6 +123,20 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `AI embassy appointment never creates an embassy or replaces a named envoy`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        // No embassy means no representative can be assigned.
+        assertTrue(!diplomacy.appointAmbassador("Envoy"))
+        assertEquals(null, diplomacy.ambassadorName)
+
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Existing Envoy"))
+        // A later automated appointment must not overwrite a player-defined or existing name.
+        assertEquals("Existing Envoy", diplomacy.ambassadorName)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
