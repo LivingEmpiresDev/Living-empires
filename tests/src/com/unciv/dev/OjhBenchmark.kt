@@ -356,6 +356,21 @@ object OjhBenchmark {
             }
             check(afterSecond == afterFirst) { "SIM duplicate AI peace proposals in same turn" }
             note("SIM scenario aiPeaceOfferDedup=passed generated=${afterFirst - beforeRepeat}")
+            // AI-generated proposals must always contain reciprocal peace
+            // treaty offers and nonnegative monetary concessions.
+            for (request in defender.tradeRequests.filter {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }) {
+                val trade = request.trade
+                check(trade.ourOffers.any { it.name == Constants.peaceTreaty })
+                check(trade.theirOffers.any { it.name == Constants.peaceTreaty })
+                check((trade.ourOffers + trade.theirOffers).filter {
+                    it.type == com.unciv.logic.trade.TradeOfferType.Gold ||
+                        it.type == com.unciv.logic.trade.TradeOfferType.Gold_Per_Turn
+                }.all { it.amount >= 0 }) { "SIM AI proposed negative peace reparations" }
+            }
+            note("SIM scenario aiPeaceOfferTerms=passed inspected=${afterSecond - beforeRepeat}")
+
 
 
 
