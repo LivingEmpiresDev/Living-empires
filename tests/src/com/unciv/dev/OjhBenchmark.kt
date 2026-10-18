@@ -212,6 +212,22 @@ object OjhBenchmark {
                 }
                 check(manager.canAttack())
                 note("SIM scenario treaty20TurnGuard=passed")
+                // A peace treaty independently blocks attacks; overlapping treaties
+                // must both expire before combat is permitted.
+                offer.duration = 20
+                val peace = com.unciv.logic.trade.TradeOffer(
+                    Constants.peaceTreaty,
+                    com.unciv.logic.trade.TradeOfferType.Treaty,
+                    duration = 10
+                )
+                temporary.ourOffers.add(peace)
+                check(!manager.canAttack())
+                offer.duration = 0
+                check(!manager.canAttack())
+                peace.duration = 0
+                check(manager.canAttack())
+                note("SIM scenario overlappingPeaceAndNonAggression=passed")
+
             } finally {
                 manager.trades.remove(temporary)
             }
