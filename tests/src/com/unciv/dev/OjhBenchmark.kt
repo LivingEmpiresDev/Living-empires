@@ -171,6 +171,20 @@ object OjhBenchmark {
         note(String.format(Locale.ROOT, "loaded in %.3f s", bootSeconds))
         say("OJH ready")
 
+        // A reproducible baseline scenario: every new game starts without an
+        // active bilateral defensive pact or a recorded bilateral war.
+        // Assert the baseline before AI takes its first turn.
+        for (civ in info.civilizations) {
+            for ((otherName, manager) in civ.diplomacy) {
+                val other = info.civilizations.firstOrNull { it.civName == otherName } ?: continue
+                val reverse = other.diplomacy[civ.civName] ?: continue
+                val war = com.unciv.logic.civilization.diplomacy.DiplomaticStatus.War
+                check((manager.diplomaticStatus == war) == (reverse.diplomaticStatus == war)) {
+                    "SIM initial diplomacy asymmetrical war civ=${civ.civName} other=$otherName"
+                }
+            }
+        }
+        note("SIM scenario initialWarReciprocity=passed")
         var previousWarPairs: Set<String> = emptySet()
         var observedWarStart = false
         var observedWarEnd = false
