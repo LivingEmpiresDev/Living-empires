@@ -57,8 +57,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew :tests:ojh -Pojh.args="turns --turns 100 --players 8 --size small --seed ${{ matrix.seed }}" | tee ai-turns.log
+          ./gradlew :tests:ojh -Pojh.args="turns --turns 100 --players 8 --size small --seed ${{ matrix.seed }}" 2>&1 | tee ai-turns.log
           test "$(grep -c '^OJH turn ' ai-turns.log)" -eq 100
+          python3 scripts/simulation/validate_war_telemetry.py ai-turns.log --expected-turns 100
           python3 scripts/simulation/validate_turn_trace.py ai-turns.log --expected-turns 100 --seed ${{ matrix.seed }} --output ai-turns-report.json
       - name: Upload AI turn trace
         if: always()
@@ -87,8 +88,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew :tests:ojh -Pojh.args="turns --turns 500 --players 8 --size small --seed 404" | tee ai-stress.log
+          ./gradlew :tests:ojh -Pojh.args="turns --turns 500 --players 8 --size small --seed 404" 2>&1 | tee ai-stress.log
           test "$(grep -c '^OJH turn ' ai-stress.log)" -eq 500
+          python3 scripts/simulation/validate_war_telemetry.py ai-stress.log --expected-turns 500
           python3 scripts/simulation/validate_turn_trace.py ai-stress.log --expected-turns 500 --seed 404 --output ai-stress-report.json
       - name: Upload long-game trace
         if: always()
