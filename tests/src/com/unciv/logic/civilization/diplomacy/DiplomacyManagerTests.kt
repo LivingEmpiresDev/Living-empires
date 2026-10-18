@@ -96,6 +96,33 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `ambassador appointment requires an established embassy`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        assertTrue(!diplomacy.appointAmbassador("Ada"))
+        assertEquals(null, diplomacy.ambassadorName)
+
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Ada"))
+        assertEquals("Ada", diplomacy.ambassadorName)
+        assertTrue(!diplomacy.appointAmbassador("  "))
+        assertEquals("Ada", diplomacy.ambassadorName)
+    }
+
+    @Test
+    fun `ambassador assignment survives cloning and clears on embassy closure`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Amara"))
+        assertEquals("Amara", diplomacy.clone().ambassadorName)
+
+        a.diplomacyFunctions.removeEmbassies(b)
+        assertEquals(null, diplomacy.ambassadorName)
+        assertEquals(null, b.getDiplomacyManager(a)!!.ambassadorName)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
