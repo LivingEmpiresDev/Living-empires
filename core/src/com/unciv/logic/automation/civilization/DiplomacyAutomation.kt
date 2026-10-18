@@ -411,7 +411,10 @@ object DiplomacyAutomation {
                     if (start < 0) 0 else (civInfo.gameInfo.turns - start).coerceAtLeast(0)
                 }
             )
-            if (pressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
+            val exhaustion = civInfo.getDiplomacyManager(enemy)!!.warExhaustion.coerceIn(0f, 100f)
+            val effectivePressure = pressure + (exhaustion / 5f).toInt()
+            val peaceThreshold = civInfo.getDiplomacyManager(enemy)!!.peaceMotivationThreshold()
+            if (effectivePressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, peaceThreshold) >= peaceThreshold) {
                 // We can still fight. Refuse peace.
                 continue
             }
