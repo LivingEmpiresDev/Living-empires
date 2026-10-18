@@ -185,6 +185,39 @@ object OjhBenchmark {
             }
         }
         note("SIM scenario initialWarReciprocity=passed")
+        // Controlled scenario: install a 20-turn non-aggression treaty in an
+        // actual initialized game's diplomacy manager, then verify the guard.
+        // Restore the original trades before the AI simulation proceeds.
+        val scenarioPair = info.civilizations.filter { !it.isBarbarian && !it.isSpectator() }
+            .flatMap { civ -> civ.diplomacy.keys.mapNotNull { otherName ->
+                val other = info.civilizations.firstOrNull { it.civName == otherName }
+                if (other != null && !other.isBarbarian && !other.isSpectator()) civ to other else null
+            } }.firstOrNull()
+        if (scenarioPair != null) {
+            val (first, second) = scenarioPair
+            val manager = first.diplomacy[second.civName]!!
+            val temporary = com.unciv.logic.trade.Trade()
+            val offer = com.unciv.logic.trade.TradeOffer(
+                com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties.nonAggressionPact,
+                com.unciv.logic.trade.TradeOfferType.Treaty,
+                duration = com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties.duration
+            )
+            temporary.ourOffers.add(offer)
+            manager.trades.add(temporary)
+            try {
+                for (remaining in 20 downTo 1) {
+                    check(manager.turnsToNonAggressionPact() == remaining)
+                    check(!manager.canAttack())
+                    offer.duration--
+                }
+                check(manager.canAttack())
+                note("SIM scenario treaty20TurnGuard=passed")
+            } finally {
+                manager.trades.remove(temporary)
+            }
+        } else {
+            note("SIM scenario treaty20TurnGuard=skipped no initialized diplomatic pair")
+        }
         var previousWarPairs: Set<String> = emptySet()
         var observedWarStart = false
         var observedWarEnd = false
