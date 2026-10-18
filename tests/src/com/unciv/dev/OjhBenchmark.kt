@@ -188,6 +188,22 @@ object OjhBenchmark {
             val started = warPairs - previousWarPairs
             val ended = previousWarPairs - warPairs
             note("SIM transitions turn=$turn warsStarted=${started.size} warsEnded=${ended.size}")
+            // Enforce reciprocal diplomacy state for actual simulated civilizations.
+            // Defensive pacts and war declarations must agree on both sides.
+            for (civ in info.civilizations) {
+                for ((otherName, manager) in civ.diplomacy) {
+                    val other = info.civilizations.firstOrNull { it.civName == otherName } ?: continue
+                    val reciprocal = other.diplomacy[civ.civName] ?: continue
+                    val war = com.unciv.logic.civilization.diplomacy.DiplomaticStatus.War
+                    val defensive = com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact
+                    check((manager.diplomaticStatus == war) == (reciprocal.diplomaticStatus == war)) {
+                        "SIM diplomacy asymmetrical war state turn=$turn civ=${civ.civName} other=$otherName"
+                    }
+                    check((manager.diplomaticStatus == defensive) == (reciprocal.diplomaticStatus == defensive)) {
+                        "SIM diplomacy asymmetrical defensive pact turn=$turn civ=${civ.civName} other=$otherName"
+                    }
+                }
+            }
             previousWarPairs = warPairs
         }
 
