@@ -248,6 +248,27 @@ object OjhBenchmark {
         } else {
             note("SIM scenario treaty20TurnGuard=skipped no initialized diplomatic pair")
         }
+        // Run a controlled three-civilization war on a separate fresh game.
+        // The primary benchmark game remains untouched.
+        run {
+            val scenario = start(players.coerceAtLeast(3), size, mapPath, seed + 1)
+            val majors = scenario.civilizations.filter { it.isMajorCiv() && !it.isSpectator() }
+            check(majors.size >= 3) { "SIM defensive intervention needs three major civilizations" }
+            val defender = majors[0]
+            val ally = majors[1]
+            val aggressor = majors[2]
+            defender.diplomacyFunctions.makeCivilizationsMeet(ally)
+            defender.diplomacyFunctions.makeCivilizationsMeet(aggressor)
+            aggressor.diplomacyFunctions.makeCivilizationsMeet(ally)
+            val pact = defender.getDiplomacyManager(ally)!!
+            pact.signDefensivePact(20)
+            check(pact.diplomaticStatus == com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            aggressor.getDiplomacyManager(defender)!!.declareWar()
+            check(defender.isAtWarWith(aggressor)) { "SIM defender did not enter war" }
+            check(ally.isAtWarWith(aggressor)) { "SIM defensive ally failed to join war" }
+            check(!defender.isAtWarWith(ally)) { "SIM defensive allies entered war against each other" }
+            note("SIM scenario defensiveIntervention=passed")
+        }
         var previousWarPairs: Set<String> = emptySet()
         var observedWarStart = false
         var observedWarEnd = false
