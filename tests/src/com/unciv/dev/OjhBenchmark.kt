@@ -331,7 +331,7 @@ object OjhBenchmark {
             // module boundary; invoke the compiled core method reflectively.
             val automation = com.unciv.logic.automation.civilization.DiplomacyAutomation
             val peaceMethod = automation.javaClass.declaredMethods.single {
-                it.name.startsWith("offerPeaceTreaty") && it.parameterTypes.size == 1
+                it.name == "offerPeaceTreaty" && it.parameterTypes.size == 1
             }
             peaceMethod.isAccessible = true
             peaceMethod.invoke(automation, aggressor)
