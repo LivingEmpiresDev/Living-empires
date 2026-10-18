@@ -127,7 +127,7 @@ object DiplomacyAutomation {
     /** Assign an AI representative only after an embassy actually exists.
      * Keep existing player-controlled assignments untouched. */
     internal fun appointEmbassyRepresentatives(civInfo: Civilization) {
-        if (!civInfo.isMajorCiv() || civInfo.isPlayerCivilization()) return
+        if (!civInfo.isMajorCiv() || civInfo.isHuman()) return
         for (otherCiv in civInfo.getKnownCivs()) {
             if (!otherCiv.isMajorCiv()) continue
             val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
