@@ -172,6 +172,9 @@ object OjhBenchmark {
         say("OJH ready")
 
         var previousWarPairs: Set<String> = emptySet()
+        var observedDefensivePact = false
+        var observedDefensivePactExpiry = false
+        val previousPactFlags = mutableMapOf<String, Int>()
         for (turn in 1..turns) {
             val t0 = System.nanoTime()
             info.nextTurn()
@@ -197,6 +200,20 @@ object OjhBenchmark {
                 }
             }
             if (activePacts.isNotEmpty()) note("SIM defensivePacts turn=$turn entries=${activePacts.sorted().joinToString(",")}")
+            // Observe natural pact expiry without claiming a forced scenario.
+            for (civ in info.civilizations) {
+                for ((otherName, manager) in civ.diplomacy) {
+                    val key = "${civ.civName}|$otherName"
+                    val remaining = manager.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)
+                    val previous = previousPactFlags[key] ?: 0
+                    if (remaining > 0) observedDefensivePact = true
+                    if (previous > 0 && remaining == 0) {
+                        observedDefensivePactExpiry = true
+                        note("SIM pactExpiry turn=$turn civ=${civ.civName} other=$otherName previous=$previous")
+                    }
+                    previousPactFlags[key] = remaining
+                }
+            }
             // Preserve the full context of the first asymmetric pact observation.
             // This is diagnostic evidence, not a replacement for the invariant.
             for (civ in info.civilizations) {
@@ -231,6 +248,7 @@ object OjhBenchmark {
             previousWarPairs = warPairs
         }
 
+        note("SIM coverage defensivePactObserved=$observedDefensivePact defensivePactExpiryObserved=$observedDefensivePactExpiry")
         // Unciv's own Concurrency pool is not daemon, so without this the JVM
         // sits for a minute after the last turn with nothing left to do.
         System.out.flush()
