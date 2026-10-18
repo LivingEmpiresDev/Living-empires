@@ -2,9 +2,9 @@ name: Living Empires - Permanent Regression
 on:
   workflow_dispatch:
   pull_request:
-    branches: [master, stage-5-advanced-diplomacy]
+    
   push:
-    branches: [master, testing/permanent-full-game-simulation]
+    
 permissions:
   contents: read
 jobs:
