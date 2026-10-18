@@ -348,6 +348,18 @@ object OjhBenchmark {
             aiManager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)
             defender.getDiplomacyManager(aggressor)!!.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)
             aiManager.warStartedOnTurn = aggressor.gameInfo.turns - 50
+            // Remove the early-game motivation gate by giving the aggressor
+            // several simultaneous enemies; this raises peace pressure.
+            for (extraEnemy in majors.drop(3).take(3)) {
+                aggressor.diplomacyFunctions.makeCivilizationsMeet(extraEnemy)
+                aggressor.getDiplomacyManager(extraEnemy)!!.declareWar()
+                aggressor.getDiplomacyManager(extraEnemy)!!.removeFlag(
+                    com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar
+                )
+                extraEnemy.getDiplomacyManager(aggressor)!!.removeFlag(
+                    com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar
+                )
+            }
             val beforeRepeat = defender.tradeRequests.count {
                 it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
             }
