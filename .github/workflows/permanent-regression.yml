@@ -65,3 +65,31 @@ jobs:
           name: ai-turns-seed-${{ matrix.seed }}
           path: ai-turns.log
           if-no-files-found: warn
+
+  ai-game-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Simulate 500 AI turns with deterministic seed
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew :tests:ojh -Pojh.args="turns --turns 500 --players 8 --size small --seed 404" | tee ai-stress.log
+          test "$(grep -c '^OJH turn ' ai-stress.log)" -eq 500
+          grep -q '^OJH ready$' ai-stress.log
+      - name: Upload long-game trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-stress-500-turns-seed-404
+          path: ai-stress.log
+          if-no-files-found: warn
