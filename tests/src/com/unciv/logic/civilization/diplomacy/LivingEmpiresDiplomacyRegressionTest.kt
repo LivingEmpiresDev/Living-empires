@@ -135,4 +135,20 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertTrue(manager.canAttack())
     }
 
+    @Test fun defensivePactAndPeaceCooldownSurviveCloneIndependently() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.diplomaticStatus = DiplomaticStatus.DefensivePact
+        original.setFlag(DiplomacyFlags.DefensivePact, 20)
+        original.setFlag(DiplomacyFlags.DeclinedPeace, 5)
+        val copy = original.clone()
+        assertEquals(DiplomaticStatus.DefensivePact, copy.diplomaticStatus)
+        assertEquals(20, copy.getFlag(DiplomacyFlags.DefensivePact))
+        assertEquals(5, copy.getFlag(DiplomacyFlags.DeclinedPeace))
+        copy.removeFlag(DiplomacyFlags.DeclinedPeace)
+        copy.removeFlag(DiplomacyFlags.DefensivePact)
+        assertEquals(20, original.getFlag(DiplomacyFlags.DefensivePact))
+        assertEquals(5, original.getFlag(DiplomacyFlags.DeclinedPeace))
+    }
+
 }
