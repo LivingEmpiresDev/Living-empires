@@ -318,6 +318,22 @@ object OjhBenchmark {
             pactOffer.duration = 0
             check(peaceManager.canDeclareWar())
             note("SIM scenario nonAggressionBlocksVoluntaryWarTypes=passed")
+            // A fresh AI war should not produce an immediate peace proposal
+            // while the DeclinedPeace cooldown is active.
+            val aiManager = aggressor.getDiplomacyManager(defender)!!
+            aiManager.declareWar()
+            check(aggressor.isAtWarWith(defender))
+            aiManager.setFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace, 5)
+            val requestsBefore = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            com.unciv.logic.automation.civilization.DiplomacyAutomation.offerPeaceTreaty(aggressor)
+            val requestsAfter = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            check(requestsAfter == requestsBefore) { "SIM AI offered peace during DeclinedPeace cooldown" }
+            note("SIM scenario aiPeaceCooldown=passed")
+
 
 
 
