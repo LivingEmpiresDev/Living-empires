@@ -188,6 +188,15 @@ object OjhBenchmark {
             val started = warPairs - previousWarPairs
             val ended = previousWarPairs - warPairs
             note("SIM transitions turn=$turn warsStarted=${started.size} warsEnded=${ended.size}")
+            // Diagnostic: a one-turn difference in defensive pact flags may be caused
+            // by sequential civilization turn processing rather than a broken pact.
+            val activePacts = info.civilizations.flatMap { civ ->
+                civ.diplomacy.mapNotNull { (otherName, manager) ->
+                    val flag = manager.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)
+                    if (flag > 0) "${civ.civName}>$otherName:$flag" else null
+                }
+            }
+            if (activePacts.isNotEmpty()) note("SIM defensivePacts turn=$turn entries=${activePacts.sorted().joinToString(",")}")
             // Enforce reciprocal diplomacy state for actual simulated civilizations.
             // Defensive pacts and war declarations must agree on both sides.
             for (civ in info.civilizations) {
