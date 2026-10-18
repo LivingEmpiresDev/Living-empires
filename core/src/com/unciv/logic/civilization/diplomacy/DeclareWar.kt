@@ -163,6 +163,8 @@ object DeclareWar {
         if (isOffensiveWar) {
             removeDefensivePacts(diplomacyManager)
         }
+        diplomacyManager.resetWarExhaustionForNewWar()
+        diplomacyManager.otherCivDiplomacy().resetWarExhaustionForNewWar()
         diplomacyManager.diplomaticStatus = DiplomaticStatus.War
         diplomacyManager.warStartedOnTurn = diplomacyManager.civInfo.gameInfo.turns
         diplomacyManager.otherCivDiplomacy().warStartedOnTurn = diplomacyManager.civInfo.gameInfo.turns
