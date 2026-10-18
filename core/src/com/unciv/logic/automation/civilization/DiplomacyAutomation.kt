@@ -132,7 +132,12 @@ object DiplomacyAutomation {
             if (!otherCiv.isMajorCiv()) continue
             val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
             if (diplomacy.ambassadorName != null) continue
-            diplomacy.appointAmbassador("Envoy of " + civInfo.civName)
+            val firstNames = listOf("Amara", "Darius", "Mira", "Niko", "Sana", "Tarek", "Leona", "Ilya")
+            val familyNames = listOf("Vale", "Arden", "Solari", "Maren", "Renn", "Kade", "Voss", "Sorin")
+            val seed = (civInfo.civID + ":" + otherCiv.civID).hashCode()
+            val first = firstNames[(seed.toLong() and 0x7fffffffL).rem(firstNames.size).toInt()]
+            val family = familyNames[((seed.toLong() ushr 8) and 0x7fffffffL).rem(familyNames.size).toInt()]
+            diplomacy.appointAmbassador("$" + "{first} $" + "{family}")
         }
     }
 
