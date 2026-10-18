@@ -172,6 +172,8 @@ object OjhBenchmark {
         say("OJH ready")
 
         var previousWarPairs: Set<String> = emptySet()
+        var observedWarStart = false
+        var observedWarEnd = false
         var observedDefensivePact = false
         var observedDefensivePactExpiry = false
         val previousPactFlags = mutableMapOf<String, Int>()
@@ -190,6 +192,8 @@ object OjhBenchmark {
             note("SIM diplomacy turn=$turn warPairs=${warPairs.size}")
             val started = warPairs - previousWarPairs
             val ended = previousWarPairs - warPairs
+            if (started.isNotEmpty()) observedWarStart = true
+            if (ended.isNotEmpty()) observedWarEnd = true
             note("SIM transitions turn=$turn warsStarted=${started.size} warsEnded=${ended.size}")
             // Diagnostic: a one-turn difference in defensive pact flags may be caused
             // by sequential civilization turn processing rather than a broken pact.
@@ -248,6 +252,7 @@ object OjhBenchmark {
             previousWarPairs = warPairs
         }
 
+        note("SIM coverage warStartObserved=$observedWarStart warEndObserved=$observedWarEnd")
         note("SIM coverage defensivePactObserved=$observedDefensivePact defensivePactExpiryObserved=$observedDefensivePactExpiry")
         // Unciv's own Concurrency pool is not daemon, so without this the JVM
         // sits for a minute after the last turn with nothing left to do.
