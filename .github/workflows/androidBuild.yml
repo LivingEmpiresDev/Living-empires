@@ -11,6 +11,7 @@ on:
       - 'stage-2/non-aggression-pact'
       - 'stage-3/merge-validation-20261016'
       - 'stage-4/advanced-peace-reparations'
+      - 'master'
     paths:
       - 'core/**'
       - 'tests/**'
