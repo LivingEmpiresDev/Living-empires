@@ -137,6 +137,25 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `ambassador names are validated and appointments remain directional`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val incoming = b.getDiplomacyManager(a)!!
+        outgoing.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+        incoming.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+
+        assertTrue(!outgoing.appointAmbassador("x".repeat(61)))
+        assertEquals(null, outgoing.ambassadorName)
+        assertTrue(outgoing.appointAmbassador("  Mira  "))
+        assertEquals("Mira", outgoing.ambassadorName)
+        assertEquals(null, incoming.ambassadorName)
+
+        assertTrue(incoming.appointAmbassador("Niko"))
+        assertEquals("Mira", outgoing.ambassadorName)
+        assertEquals("Niko", incoming.ambassadorName)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
