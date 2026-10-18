@@ -200,7 +200,7 @@ object OjhBenchmark {
                         "SIM diplomacy asymmetrical war state turn=$turn civ=${civ.civName} other=$otherName"
                     }
                     check((manager.diplomaticStatus == defensive) == (reciprocal.diplomaticStatus == defensive)) {
-                        "SIM diplomacy asymmetrical defensive pact turn=$turn civ=${civ.civName} other=$otherName"
+                        "SIM diplomacy asymmetrical defensive pact turn=$turn civ=${civ.civName} other=$otherName forward=${manager.diplomaticStatus} reverse=${reciprocal.diplomaticStatus} forwardFlag=${manager.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)} reverseFlag=${reciprocal.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)}"
                     }
                 }
             }
