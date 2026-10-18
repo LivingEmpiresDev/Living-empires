@@ -221,6 +221,20 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * As for why it's String and not DiplomaticModifier see FlagsCountdown comment */
     var diplomaticModifiers = HashMap<String, Float>()
 
+    /** Stage 5: name of our appointed representative in the other civilization's capital.
+     * Null means no representative is assigned. Stored on our directional diplomacy record. */
+    var ambassadorName: String? = null
+
+    /** Appoint only when our embassy is established using the existing diplomacy rules. */
+    fun appointAmbassador(name: String): Boolean {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > 60) return false
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        ambassadorName = trimmed
+        return true
+    }
+
     /** Stage 5: per-opponent war fatigue, persisted in saves and bounded to 0..100. */
     var warExhaustion = 0f
         private set
@@ -304,6 +318,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.influence = influence
         toReturn.flagsCountdown.putAll(flagsCountdown)
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
+        toReturn.ambassadorName = ambassadorName
         toReturn.warExhaustion = warExhaustion
         toReturn.turnsAtWar = turnsAtWar
         toReturn.totalOfScienceDuringRA = totalOfScienceDuringRA
