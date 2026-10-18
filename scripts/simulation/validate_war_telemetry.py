@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 PATTERN = re.compile(r"SIM diplomacy turn=(\d+) warPairs=(\d+)")
+TRANSITIONS = re.compile(r"SIM transitions turn=(\d+) warsStarted=(\d+) warsEnded=(\d+)")
 
 def validate(content: str, expected_turns: int) -> None:
     observations = [(int(t), int(w)) for t, w in PATTERN.findall(content)]
