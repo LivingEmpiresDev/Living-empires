@@ -71,6 +71,31 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `war exhaustion stays bounded through a prolonged war`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        repeat(1000) { diplomacy.advanceWarExhaustion() }
+
+        assertEquals(100f, diplomacy.warExhaustion)
+        assertEquals(1000, diplomacy.turnsAtWar)
+        assertEquals(20f, diplomacy.peaceMotivationThreshold())
+    }
+
+    @Test
+    fun `war exhaustion cools to zero and peace removes motivation penalty`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        repeat(20) { diplomacy.advanceWarExhaustion() }
+        diplomacy.diplomaticStatus = DiplomaticStatus.Peace
+        assertEquals(10f, diplomacy.peaceMotivationThreshold())
+        repeat(100) { diplomacy.advanceWarExhaustion() }
+        assertEquals(0f, diplomacy.warExhaustion)
+        assertEquals(0, diplomacy.turnsAtWar)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
