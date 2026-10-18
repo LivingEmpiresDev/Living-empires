@@ -393,7 +393,8 @@ object OjhBenchmark {
                         it.type == com.unciv.logic.trade.TradeOfferType.Gold_Per_Turn
                 }.all { it.amount >= 0 }) { "SIM AI proposed negative peace reparations" }
             }
-            note("SIM scenario aiPeaceOfferTerms=${if (afterSecond > beforeRepeat) "passed" else "not_exercised"} inspected=${afterSecond - beforeRepeat}")
+            check(afterSecond > beforeRepeat) { "SIM expected an actual AI peace proposal after settling and multi-front war pressure" }
+            note("SIM scenario aiPeaceOfferTerms=passed inspected=${afterSecond - beforeRepeat}")
 
 
 
