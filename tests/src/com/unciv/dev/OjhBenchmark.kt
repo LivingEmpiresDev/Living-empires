@@ -252,6 +252,12 @@ object OjhBenchmark {
         // The primary benchmark game remains untouched.
         run {
             val scenario = start(players.coerceAtLeast(3), size, mapPath, seed + 1)
+            // Let normal AI turns establish settlements before diplomacy tests.
+            // AI peace automation requires both belligerents to own cities.
+            for (setupTurn in 1..12) {
+                if (scenario.civilizations.count { it.isMajorCiv() && it.cities.isNotEmpty() } >= 3) break
+                scenario.nextTurn()
+            }
             val majors = scenario.civilizations.filter { it.isMajorCiv() && !it.isSpectator() }
             check(majors.size >= 3) { "SIM defensive intervention needs three major civilizations" }
             val defender = majors[0]
