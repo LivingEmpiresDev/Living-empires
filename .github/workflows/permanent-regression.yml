@@ -2,9 +2,7 @@ name: Living Empires - Permanent Regression
 on:
   workflow_dispatch:
   pull_request:
-    
   push:
-    
 permissions:
   contents: read
 jobs:
@@ -42,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        seed: [101, 202]
+        seed: [101, 202, 303]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
