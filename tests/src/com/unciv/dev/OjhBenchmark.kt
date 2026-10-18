@@ -294,6 +294,31 @@ object OjhBenchmark {
             peaceOffer.duration = 0
             check(peaceManager.canDeclareWar()) { "SIM declaration still blocked after peace treaty expiry" }
             note("SIM scenario peaceTreatyBlocksRedeclaration=passed")
+            // The same non-aggression protection must apply to joint-war
+            // and join-war declarations, not only direct attacks.
+            peaceOffer.duration = 0
+            val pactTrade = com.unciv.logic.trade.Trade()
+            val pactOffer = com.unciv.logic.trade.TradeOffer(
+                com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties.nonAggressionPact,
+                com.unciv.logic.trade.TradeOfferType.Treaty,
+                duration = 20
+            )
+            pactTrade.ourOffers.add(pactOffer)
+            peaceManager.trades.add(pactTrade)
+            for (kind in listOf(
+                com.unciv.logic.civilization.diplomacy.WarType.DirectWar,
+                com.unciv.logic.civilization.diplomacy.WarType.TeamWar,
+                com.unciv.logic.civilization.diplomacy.WarType.JoinWar
+            )) {
+                peaceManager.declareWar(com.unciv.logic.civilization.diplomacy.DeclareWarReason(kind))
+                check(!defender.isAtWarWith(aggressor)) {
+                    "SIM non-aggression pact bypassed by $kind"
+                }
+            }
+            pactOffer.duration = 0
+            check(peaceManager.canDeclareWar())
+            note("SIM scenario nonAggressionBlocksVoluntaryWarTypes=passed")
+
 
 
         }
