@@ -194,7 +194,14 @@ object DiplomacyTurnManager {
                             scienceFromResearchAgreement()
                     }
                     DiplomacyFlags.DefensivePact.name -> {
-                        diplomaticStatus = DiplomaticStatus.Peace
+                        // Civilization turns are processed sequentially. Keep both sides'
+                        // diplomatic status aligned when the first side's timer expires.
+                        val reciprocal = otherCivDiplomacy()
+                        if (diplomaticStatus == DiplomaticStatus.DefensivePact)
+                            diplomaticStatus = DiplomaticStatus.Peace
+                        if (reciprocal.diplomaticStatus == DiplomaticStatus.DefensivePact)
+                            reciprocal.diplomaticStatus = DiplomaticStatus.Peace
+                        reciprocal.removeFlag(DiplomacyFlags.DefensivePact)
                     }
                     // This is confusingly named - in fact, the civ that has the flag set is the MAJOR civ
                     DiplomacyFlags.ProvideMilitaryUnit.name -> {
