@@ -1,0 +1,101 @@
+name: Living Empires - Permanent Regression
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+permissions:
+  contents: read
+jobs:
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify simulation validator catches malformed traces
+        run: python3 -m unittest discover -s scripts/simulation -p 'test_*.py' -v
+      - name: Run existing game regression tests
+        run: ./gradlew :tests:test --stacktrace
+      - name: Build Android debug APK
+        run: ./gradlew :android:assembleDebug --stacktrace
+      - name: Preserve test and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: living-empires-regression-evidence
+          if-no-files-found: warn
+          path: |
+            tests/build/test-results/
+            tests/build/reports/tests/
+            android/build/outputs/apk/debug/
+
+  ai-game-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [101, 202, 303]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Simulate 100 AI turns using existing headless engine
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew :tests:ojh -Pojh.args="turns --turns 100 --players 8 --size small --seed ${{ matrix.seed }}" | tee ai-turns.log
+          test "$(grep -c '^OJH turn ' ai-turns.log)" -eq 100
+          python3 scripts/simulation/validate_turn_trace.py ai-turns.log --expected-turns 100 --seed ${{ matrix.seed }} --output ai-turns-report.json
+      - name: Upload AI turn trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-turns-seed-${{ matrix.seed }}
+          path: |
+            ai-turns.log
+            ai-turns-report.json
+          if-no-files-found: warn
+
+  ai-game-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Simulate 500 AI turns with deterministic seed
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew :tests:ojh -Pojh.args="turns --turns 500 --players 8 --size small --seed 404" | tee ai-stress.log
+          test "$(grep -c '^OJH turn ' ai-stress.log)" -eq 500
+          python3 scripts/simulation/validate_turn_trace.py ai-stress.log --expected-turns 500 --seed 404 --output ai-stress-report.json
+      - name: Upload long-game trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-stress-500-turns-seed-404
+          path: |
+            ai-stress.log
+            ai-stress-report.json
+          if-no-files-found: warn
