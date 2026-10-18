@@ -278,6 +278,23 @@ object OjhBenchmark {
             check(aggressor.getDiplomacyManager(defender)!!.diplomaticStatus ==
                 com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
             note("SIM scenario bilateralPeace=passed")
+            // Accepted peace terms must prevent an immediate re-declaration.
+            // Exercise the production declaration guard, not merely canAttack().
+            val peaceTrade = com.unciv.logic.trade.Trade()
+            val peaceOffer = com.unciv.logic.trade.TradeOffer(
+                Constants.peaceTreaty,
+                com.unciv.logic.trade.TradeOfferType.Treaty,
+                duration = 10
+            )
+            peaceTrade.ourOffers.add(peaceOffer)
+            peaceManager.trades.add(peaceTrade)
+            check(!peaceManager.canDeclareWar())
+            peaceManager.declareWar()
+            check(!defender.isAtWarWith(aggressor)) { "SIM war declared during active peace treaty" }
+            peaceOffer.duration = 0
+            check(peaceManager.canDeclareWar()) { "SIM declaration still blocked after peace treaty expiry" }
+            note("SIM scenario peaceTreatyBlocksRedeclaration=passed")
+
 
         }
         var previousWarPairs: Set<String> = emptySet()
