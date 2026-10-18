@@ -171,6 +171,7 @@ object OjhBenchmark {
         note(String.format(Locale.ROOT, "loaded in %.3f s", bootSeconds))
         say("OJH ready")
 
+        var previousWarPairs: Set<String> = emptySet()
         for (turn in 1..turns) {
             val t0 = System.nanoTime()
             info.nextTurn()
@@ -178,10 +179,16 @@ object OjhBenchmark {
             say(String.format(Locale.ROOT, "OJH turn %d %.6f", turn, seconds))
             // Supplemental diagnostics on stderr preserve the OJH stdout protocol.
             // These are observations of real AI game turns, not forced diplomatic scenarios.
-            val warPairs = info.civilizations.sumOf { civ ->
-                civ.diplomacy.values.count { it.diplomaticStatus == com.unciv.logic.civilization.diplomacy.DiplomaticStatus.War }
-            } / 2
-            note("SIM diplomacy turn=$turn warPairs=$warPairs")
+            val warPairs = info.civilizations.flatMap { civ ->
+                civ.diplomacy.filterValues {
+                    it.diplomaticStatus == com.unciv.logic.civilization.diplomacy.DiplomaticStatus.War
+                }.keys.map { other -> listOf(civ.civName, other).sorted().joinToString("|") }
+            }.toSet()
+            note("SIM diplomacy turn=$turn warPairs=${warPairs.size}")
+            val started = warPairs - previousWarPairs
+            val ended = previousWarPairs - warPairs
+            note("SIM transitions turn=$turn warsStarted=${started.size} warsEnded=${ended.size}")
+            previousWarPairs = warPairs
         }
 
         // Unciv's own Concurrency pool is not daemon, so without this the JVM
