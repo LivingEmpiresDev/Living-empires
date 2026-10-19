@@ -10,6 +10,8 @@ import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
 import com.unciv.logic.GameStarter
 import com.unciv.logic.civilization.PlayerType
+import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
+import com.unciv.logic.civilization.diplomacy.DiplomaticStatus
 import com.unciv.logic.files.MapSaver
 import com.unciv.logic.files.UncivFiles
 import com.unciv.logic.map.MapGeneratedMainType
@@ -171,6 +173,554 @@ object OjhBenchmark {
         note(String.format(Locale.ROOT, "loaded in %.3f s", bootSeconds))
         say("OJH ready")
 
+        // A reproducible baseline scenario: every new game starts without an
+        // active bilateral defensive pact or a recorded bilateral war.
+        // Assert the baseline before AI takes its first turn.
+        for (civ in info.civilizations) {
+            for ((otherName, manager) in civ.diplomacy) {
+                val other = info.civilizations.firstOrNull { it.civName == otherName } ?: continue
+                val reverse = other.diplomacy[civ.civName] ?: continue
+                val war = com.unciv.logic.civilization.diplomacy.DiplomaticStatus.War
+                check((manager.diplomaticStatus == war) == (reverse.diplomaticStatus == war)) {
+                    "SIM initial diplomacy asymmetrical war civ=${civ.civName} other=$otherName"
+                }
+            }
+        }
+        note("SIM scenario initialWarReciprocity=passed")
+        // Controlled scenario: install a 20-turn non-aggression treaty in an
+        // actual initialized game's diplomacy manager, then verify the guard.
+        // Restore the original trades before the AI simulation proceeds.
+        val scenarioPair = info.civilizations.filter { !it.isBarbarian && !it.isSpectator() }
+            .flatMap { civ -> civ.diplomacy.keys.mapNotNull { otherName ->
+                val other = info.civilizations.firstOrNull { it.civName == otherName }
+                if (other != null && !other.isBarbarian && !other.isSpectator()) civ to other else null
+            } }.firstOrNull()
+        if (scenarioPair != null) {
+            val (first, second) = scenarioPair
+            val manager = first.diplomacy[second.civName]!!
+            val temporary = com.unciv.logic.trade.Trade()
+            val offer = com.unciv.logic.trade.TradeOffer(
+                com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties.nonAggressionPact,
+                com.unciv.logic.trade.TradeOfferType.Treaty,
+                duration = com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties.duration
+            )
+            temporary.ourOffers.add(offer)
+            manager.trades.add(temporary)
+            try {
+                for (remaining in 20 downTo 1) {
+                    check(manager.turnsToNonAggressionPact() == remaining)
+                    check(!manager.canAttack())
+                    offer.duration--
+                }
+                check(manager.canAttack())
+                note("SIM scenario treaty20TurnGuard=passed")
+                // A peace treaty independently blocks attacks; overlapping treaties
+                // must both expire before combat is permitted.
+                offer.duration = 20
+                val peace = com.unciv.logic.trade.TradeOffer(
+                    Constants.peaceTreaty,
+                    com.unciv.logic.trade.TradeOfferType.Treaty,
+                    duration = 10
+                )
+                temporary.ourOffers.add(peace)
+                check(!manager.canAttack())
+                offer.duration = 0
+                check(!manager.canAttack())
+                peace.duration = 0
+                check(manager.canAttack())
+                note("SIM scenario overlappingPeaceAndNonAggression=passed")
+                // A defensive pact timer and rejected-peace cooldown are
+                // independent, including after cloning diplomacy for save state.
+                manager.setFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact, 20)
+                manager.setFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace, 5)
+                val saved = manager.clone()
+                check(saved.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact) == 20)
+                check(saved.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace) == 5)
+                saved.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+                check(saved.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact) == 20)
+                check(manager.getFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace) == 5)
+                manager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DefensivePact)
+                manager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+                note("SIM scenario defensivePactAndPeaceCooldownClone=passed")
+
+
+            } finally {
+                manager.trades.remove(temporary)
+            }
+        } else {
+            note("SIM scenario treaty20TurnGuard=skipped no initialized diplomatic pair")
+        }
+        // Run a controlled three-civilization war on a separate fresh game.
+        // The primary benchmark game remains untouched.
+        run {
+            val scenario = start(players.coerceAtLeast(3), size, mapPath, seed + 1, minimumCityStates = 1)
+            // Let normal AI turns establish settlements before diplomacy tests.
+            // AI peace automation requires both belligerents to own cities.
+            for (setupTurn in 1..12) {
+                if (scenario.civilizations.count { it.isMajorCiv() && it.cities.isNotEmpty() } >= 3) break
+                scenario.nextTurn()
+            }
+            val majors = scenario.civilizations.filter { it.isMajorCiv() && !it.isSpectator() }
+            check(majors.size >= 3) { "SIM defensive intervention needs three major civilizations" }
+            val defender = majors[0]
+            val ally = majors[1]
+            val aggressor = majors[2]
+            defender.diplomacyFunctions.makeCivilizationsMeet(ally)
+            defender.diplomacyFunctions.makeCivilizationsMeet(aggressor)
+            aggressor.diplomacyFunctions.makeCivilizationsMeet(ally)
+            val pact = defender.getDiplomacyManager(ally)!!
+            pact.signDefensivePact(20)
+            check(pact.diplomaticStatus == com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            aggressor.getDiplomacyManager(defender)!!.declareWar()
+            check(defender.isAtWarWith(aggressor)) { "SIM defender did not enter war" }
+            check(ally.isAtWarWith(aggressor)) { "SIM defensive ally failed to join war" }
+            check(!defender.isAtWarWith(ally)) { "SIM defensive allies entered war against each other" }
+            note("SIM scenario defensiveIntervention=passed")
+
+            // Reproduce the asymmetric-expiry risk in an isolated full game:
+            // the two civilizations' turns are processed sequentially, but
+            // the first expired timer must clear both diplomatic statuses.
+            val expiryGame = scenario.clone()
+            expiryGame.setTransients()
+            val expiryDefender = expiryGame.getCivilization(defender.civID)
+            val expiryAlly = expiryGame.getCivilization(ally.civID)
+            val expiryForward = expiryDefender.getDiplomacyManager(expiryAlly)!!
+            val expiryReverse = expiryAlly.getDiplomacyManager(expiryDefender)!!
+            expiryForward.setFlag(DiplomacyFlags.DefensivePact, 1)
+            expiryReverse.setFlag(DiplomacyFlags.DefensivePact, 1)
+            expiryGame.nextTurn()
+            check(expiryForward.diplomaticStatus == expiryReverse.diplomaticStatus) {
+                "SIM defensive pact expiry left asymmetric diplomatic statuses"
+            }
+            check(expiryForward.diplomaticStatus != DiplomaticStatus.DefensivePact) {
+                "SIM expired defensive pact remained active"
+            }
+            check(!expiryForward.hasFlag(DiplomacyFlags.DefensivePact))
+            check(!expiryReverse.hasFlag(DiplomacyFlags.DefensivePact))
+            note("SIM scenario defensivePactReciprocalExpiry=passed")
+
+            // City-state diplomacy must stay separate from major-civilization
+            // defensive pacts. Exercise an actual initialized city-state and
+            // verify that bilateral war and peace remain reciprocal.
+            val cityState = scenario.civilizations.firstOrNull { it.isCityState }
+                ?: error("SIM city-state fixture missing: expected at least one city-state")
+            run {
+                defender.diplomacyFunctions.makeCivilizationsMeet(cityState)
+                val majorToMinor = defender.getDiplomacyManager(cityState)!!
+                val minorToMajor = cityState.getDiplomacyManager(defender)!!
+                check(majorToMinor.diplomaticStatus == minorToMajor.diplomaticStatus)
+                check(!majorToMinor.hasFlag(DiplomacyFlags.DefensivePact))
+                check(!minorToMajor.hasFlag(DiplomacyFlags.DefensivePact))
+                val cityStateGame = scenario.clone()
+                cityStateGame.setTransients()
+                val majorCopy = cityStateGame.getCivilization(defender.civID)
+                val minorCopy = cityStateGame.getCivilization(cityState.civID)
+                val minorDiplomacy = majorCopy.getDiplomacyManager(minorCopy)!!
+                minorDiplomacy.declareWar()
+                check(majorCopy.isAtWarWith(minorCopy) && minorCopy.isAtWarWith(majorCopy))
+                minorDiplomacy.makePeace()
+                check(!majorCopy.isAtWarWith(minorCopy) && !minorCopy.isAtWarWith(majorCopy))
+                check(majorCopy.getDiplomacyManager(minorCopy)!!.diplomaticStatus ==
+                    minorCopy.getDiplomacyManager(majorCopy)!!.diplomaticStatus)
+                note("SIM scenario cityStateBilateralWarPeace=passed")
+
+                // Save and reload the actual city-state peace transition,
+                // including reciprocal diplomatic status and no residual war.
+                val minorSave = UncivFiles.gameInfoToString(cityStateGame, forceZip = true)
+                val minorLoaded = UncivFiles.gameInfoFromString(minorSave)
+                val loadedMajor = minorLoaded.getCivilization(defender.civID)
+                val loadedMinor = minorLoaded.getCivilization(cityState.civID)
+                check(!loadedMajor.isAtWarWith(loadedMinor))
+                check(!loadedMinor.isAtWarWith(loadedMajor))
+                check(loadedMajor.getDiplomacyManager(loadedMinor)!!.diplomaticStatus ==
+                    loadedMinor.getDiplomacyManager(loadedMajor)!!.diplomaticStatus)
+                check(!loadedMajor.getDiplomacyManager(loadedMinor)!!.hasFlag(DiplomacyFlags.DefensivePact))
+                check(!loadedMinor.getDiplomacyManager(loadedMajor)!!.hasFlag(DiplomacyFlags.DefensivePact))
+                note("SIM scenario cityStatePeaceSaveReload=passed")
+
+            }
+
+
+            // Resolve the deliberately created war through the production peace
+            // transition and verify both sides agree on the resulting state.
+            val peaceManager = defender.getDiplomacyManager(aggressor)!!
+            peaceManager.makePeace()
+            check(!defender.isAtWarWith(aggressor)) { "SIM defender remained at war after peace" }
+            check(!aggressor.isAtWarWith(defender)) { "SIM aggressor remained at war after peace" }
+            check(peaceManager.diplomaticStatus == com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            check(aggressor.getDiplomacyManager(defender)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            note("SIM scenario bilateralPeace=passed")
+            // Accepted peace terms must prevent an immediate re-declaration.
+            // Exercise the production declaration guard, not merely canAttack().
+            val peaceTrade = com.unciv.logic.trade.Trade()
+            val peaceOffer = com.unciv.logic.trade.TradeOffer(
+                Constants.peaceTreaty,
+                com.unciv.logic.trade.TradeOfferType.Treaty,
+                duration = 10
+            )
+            peaceTrade.ourOffers.add(peaceOffer)
+            peaceManager.trades.add(peaceTrade)
+            check(!peaceManager.canDeclareWar())
+            peaceManager.declareWar()
+            check(!defender.isAtWarWith(aggressor)) { "SIM war declared during active peace treaty" }
+            peaceOffer.duration = 0
+            check(peaceManager.canDeclareWar()) { "SIM declaration still blocked after peace treaty expiry" }
+            note("SIM scenario peaceTreatyBlocksRedeclaration=passed")
+            // The same non-aggression protection must apply to joint-war
+            // and join-war declarations, not only direct attacks.
+            peaceOffer.duration = 0
+            val pactTrade = com.unciv.logic.trade.Trade()
+            val pactOffer = com.unciv.logic.trade.TradeOffer(
+                com.unciv.logic.civilization.diplomacy.LivingEmpiresTreaties.nonAggressionPact,
+                com.unciv.logic.trade.TradeOfferType.Treaty,
+                duration = 20
+            )
+            pactTrade.ourOffers.add(pactOffer)
+            peaceManager.trades.add(pactTrade)
+            for (kind in listOf(
+                com.unciv.logic.civilization.diplomacy.WarType.DirectWar,
+                com.unciv.logic.civilization.diplomacy.WarType.TeamWar,
+                com.unciv.logic.civilization.diplomacy.WarType.JoinWar
+            )) {
+                peaceManager.declareWar(com.unciv.logic.civilization.diplomacy.DeclareWarReason(kind))
+                check(!defender.isAtWarWith(aggressor)) {
+                    "SIM non-aggression pact bypassed by $kind"
+                }
+            }
+            pactOffer.duration = 0
+            check(peaceManager.canDeclareWar())
+            note("SIM scenario nonAggressionBlocksVoluntaryWarTypes=passed")
+            // A fresh AI war should not produce an immediate peace proposal
+            // while the DeclinedPeace cooldown is active.
+            val aiManager = aggressor.getDiplomacyManager(defender)!!
+            aiManager.declareWar()
+            check(aggressor.isAtWarWith(defender))
+            aiManager.setFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace, 5)
+            val requestsBefore = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            // Kotlin internal members are not callable across the core/tests
+            // module boundary; invoke the compiled core method reflectively.
+            val automation = com.unciv.logic.automation.civilization.DiplomacyAutomation
+            val peaceMethod = automation.javaClass.declaredMethods.first {
+                it.name.startsWith("offerPeaceTreaty") && it.parameterTypes.contentEquals(arrayOf(com.unciv.logic.civilization.Civilization::class.java))
+            }
+            peaceMethod.isAccessible = true
+            peaceMethod.invoke(automation, aggressor)
+            val requestsAfter = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            check(requestsAfter == requestsBefore) { "SIM AI offered peace during DeclinedPeace cooldown" }
+            note("SIM scenario aiPeaceCooldown=passed")
+            // Verify the AI routine also handles a cleared cooldown without
+            // creating duplicate requests when invoked twice in one turn.
+            aiManager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)
+            // A freshly declared war carries DeclaredWar cooldown flags on both sides.
+            // Clear them to make this a legitimate long-running-war peace scenario.
+            aiManager.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)
+            defender.getDiplomacyManager(aggressor)!!.removeFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)
+            aiManager.warStartedOnTurn = aggressor.gameInfo.turns - 50
+            // Remove the early-game motivation gate by giving the aggressor
+            // several simultaneous enemies; this raises peace pressure.
+            for (extraEnemy in majors.drop(3).take(3)) {
+                aggressor.diplomacyFunctions.makeCivilizationsMeet(extraEnemy)
+                aggressor.getDiplomacyManager(extraEnemy)!!.declareWar()
+                aggressor.getDiplomacyManager(extraEnemy)!!.removeFlag(
+                    com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar
+                )
+                extraEnemy.getDiplomacyManager(aggressor)!!.removeFlag(
+                    com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar
+                )
+            }
+            note("SIM peaceEligibility aggressorCities=${aggressor.cities.size} defenderCities=${defender.cities.size} activeWars=${aggressor.getCivsAtWarWith().size} declaredWarFlag=${aiManager.hasFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclaredWar)} declinedPeaceFlag=${aiManager.hasFlag(com.unciv.logic.civilization.diplomacy.DiplomacyFlags.DeclinedPeace)}")
+            val beforeRepeat = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            peaceMethod.invoke(automation, aggressor)
+            val afterFirst = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            peaceMethod.invoke(automation, aggressor)
+            val afterSecond = defender.tradeRequests.count {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            check(afterSecond == afterFirst) { "SIM duplicate AI peace proposals in same turn" }
+            note("SIM scenario aiPeaceOfferDedup=passed generated=${afterFirst - beforeRepeat}")
+            // AI-generated proposals must always contain reciprocal peace
+            // treaty offers and nonnegative monetary concessions.
+            for (request in defender.tradeRequests.filter {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }) {
+                val trade = request.trade
+                check(trade.ourOffers.any { it.name == Constants.peaceTreaty })
+                check(trade.theirOffers.any { it.name == Constants.peaceTreaty })
+                check((trade.ourOffers + trade.theirOffers).filter {
+                    it.type == com.unciv.logic.trade.TradeOfferType.Gold ||
+                        it.type == com.unciv.logic.trade.TradeOfferType.Gold_Per_Turn
+                }.all { it.amount >= 0 }) { "SIM AI proposed negative peace reparations" }
+            }
+            check(afterSecond > beforeRepeat) { "SIM expected an actual AI peace proposal after settling and multi-front war pressure" }
+            note("SIM scenario aiPeaceOfferTerms=passed inspected=${afterSecond - beforeRepeat}")
+            val actualOffer = defender.tradeRequests.first {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }
+            check(actualOffer.trade.ourOffers.any {
+                it.name == Constants.peaceTreaty && it.duration > 0
+            })
+            check(actualOffer.trade.theirOffers.any {
+                it.name == Constants.peaceTreaty && it.duration > 0
+            })
+            note("SIM scenario aiPeaceOfferDuration=passed")
+            // A peace proposal is not itself a signed treaty: neither side
+            // should leave the war until the request is accepted.
+            check(aggressor.isAtWarWith(defender) && defender.isAtWarWith(aggressor)) {
+                "SIM AI peace proposal ended the war without acceptance"
+            }
+            note("SIM scenario aiPeaceOfferPending=passed")
+            // The offer must be addressed to the opposing civilization and
+            // identify the aggressor as the requesting civilization.
+            check(defender.tradeRequests.any {
+                it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+            }) { "SIM generated peace offer missing from defender inbox" }
+            note("SIM scenario aiPeaceOfferDelivery=passed")
+            // Accept the generated proposal through production trade logic,
+            // not by calling makePeace directly.
+            val acceptance = com.unciv.logic.trade.TradeLogic(defender, aggressor)
+            acceptance.currentTrade.ourOffers.addAll(actualOffer.trade.ourOffers)
+            acceptance.currentTrade.theirOffers.addAll(actualOffer.trade.theirOffers)
+            acceptance.acceptTrade()
+            check(!defender.isAtWarWith(aggressor) && !aggressor.isAtWarWith(defender)) {
+                "SIM accepted AI peace proposal did not resolve bilateral war"
+            }
+            note("SIM scenario aiPeaceOfferAcceptance=passed")
+            val acceptedDefenderManager = defender.getDiplomacyManager(aggressor)!!
+            val acceptedAggressorManager = aggressor.getDiplomacyManager(defender)!!
+            check(acceptedDefenderManager.turnsToPeaceTreaty() > 0)
+            check(acceptedAggressorManager.turnsToPeaceTreaty() > 0)
+            check(!acceptedDefenderManager.canDeclareWar() && !acceptedAggressorManager.canDeclareWar()) {
+                "SIM accepted AI peace treaty failed to protect both civilizations"
+            }
+            note("SIM scenario aiPeaceAcceptanceTreatyGuard=passed")
+            // Confirm accepting one bilateral peace proposal does not
+            // accidentally terminate unrelated wars from the same scenario.
+            check(aggressor.getCivsAtWarWith().isNotEmpty()) {
+                "SIM bilateral peace unexpectedly ended every multi-front war"
+            }
+            note("SIM scenario aiPeacePreservesOtherWars=passed")
+            // Ensure accepting the treaty does not erase the pending
+            // diplomatic relationship with the original defensive ally.
+            check(!defender.isAtWarWith(ally)) {
+                "SIM accepting AI peace unexpectedly created a war with defender's ally"
+            }
+            check(defender.getDiplomacyManager(aggressor)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            check(aggressor.getDiplomacyManager(defender)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            note("SIM scenario aiPeaceStatusSymmetry=passed")
+            // The accepted agreement must also survive diplomacy-manager
+            // cloning, as used by game-state snapshots.
+            val savedDefenderDiplomacy = acceptedDefenderManager.clone()
+            val savedAggressorDiplomacy = acceptedAggressorManager.clone()
+            check(savedDefenderDiplomacy.turnsToPeaceTreaty() ==
+                acceptedDefenderManager.turnsToPeaceTreaty())
+            check(savedAggressorDiplomacy.turnsToPeaceTreaty() ==
+                acceptedAggressorManager.turnsToPeaceTreaty())
+            check(savedDefenderDiplomacy.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            check(savedAggressorDiplomacy.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            note("SIM scenario acceptedPeaceSnapshot=passed")
+            // A negotiated peace must not demand the opponent's capital or
+            // final city as reparations.
+            val cityConcessions = actualOffer.trade.ourOffers.filter {
+                it.type == com.unciv.logic.trade.TradeOfferType.City
+            } + actualOffer.trade.theirOffers.filter {
+                it.type == com.unciv.logic.trade.TradeOfferType.City
+            }
+            check(cityConcessions.size <= 1) { "SIM AI peace offer demands multiple cities" }
+            check(cityConcessions.none {
+                it.name == defender.getCapital()?.id || it.name == aggressor.getCapital()?.id
+            }) { "SIM AI peace offer demands a capital" }
+            note("SIM scenario aiPeaceCityConcessionSafeguards=passed")
+
+            // Exercise expiry and snapshot isolation without mutating the
+            // accepted agreement in the live game.
+            val snapshotTreaty = savedDefenderDiplomacy.trades.flatMap {
+                it.ourOffers + it.theirOffers
+            }.firstOrNull { it.name == Constants.peaceTreaty && it.duration > 0 }
+            check(snapshotTreaty != null) { "SIM cloned peace agreement has no active treaty" }
+            val liveTreatyTurns = acceptedDefenderManager.turnsToPeaceTreaty()
+            snapshotTreaty.duration = 0
+            check(acceptedDefenderManager.turnsToPeaceTreaty() == liveTreatyTurns) {
+                "SIM editing snapshot mutated live peace agreement"
+            }
+            check(savedDefenderDiplomacy.turnsToPeaceTreaty() >= 0)
+            note("SIM scenario acceptedPeaceSnapshotIsolation=passed")
+
+            // The AI peace agreement must not silently dissolve a separate
+            // alliance or terminate a third party's ongoing war.
+            check(defender.getDiplomacyManager(ally)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact) {
+                "SIM bilateral AI peace unexpectedly dissolved defensive pact"
+            }
+            check(ally.isAtWarWith(aggressor)) {
+                "SIM bilateral AI peace unexpectedly ended ally's separate war"
+            }
+            note("SIM scenario aiPeacePreservesDefensiveAlliance=passed")
+
+            // Full GameInfo snapshot, rather than only a diplomacy manager:
+            // reconstruct all transient references and verify the negotiated
+            // peace and separate war still agree across civilizations.
+            val restoredScenario = scenario.clone()
+            restoredScenario.setTransients()
+            val restoredDefender = restoredScenario.getCivilization(defender.civID)
+            val restoredAggressor = restoredScenario.getCivilization(aggressor.civID)
+            val restoredAlly = restoredScenario.getCivilization(ally.civID)
+            check(!restoredDefender.isAtWarWith(restoredAggressor))
+            check(!restoredAggressor.isAtWarWith(restoredDefender))
+            check(restoredDefender.getDiplomacyManager(restoredAggressor)!!.turnsToPeaceTreaty() > 0)
+            check(restoredAggressor.getDiplomacyManager(restoredDefender)!!.turnsToPeaceTreaty() > 0)
+            check(restoredAlly.isAtWarWith(restoredAggressor))
+            check(restoredDefender.getDiplomacyManager(restoredAlly)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            note("SIM scenario fullGameDiplomacySnapshot=passed")
+
+            // Exercise the real save-game serializer and loader, not just
+            // GameInfo.clone(), including transient-reference reconstruction.
+            val encodedSave = UncivFiles.gameInfoToString(scenario, forceZip = false)
+            val loadedGame = UncivFiles.gameInfoFromString(encodedSave)
+            val loadedDefender = loadedGame.getCivilization(defender.civID)
+            val loadedAggressor = loadedGame.getCivilization(aggressor.civID)
+            val loadedAlly = loadedGame.getCivilization(ally.civID)
+            check(!loadedDefender.isAtWarWith(loadedAggressor))
+            check(!loadedAggressor.isAtWarWith(loadedDefender))
+            check(loadedDefender.getDiplomacyManager(loadedAggressor)!!.turnsToPeaceTreaty() > 0)
+            check(loadedAggressor.getDiplomacyManager(loadedDefender)!!.turnsToPeaceTreaty() > 0)
+            check(loadedDefender.getDiplomacyManager(loadedAlly)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            check(loadedAlly.isAtWarWith(loadedAggressor))
+            note("SIM scenario aiPeaceSerializationRoundTrip=passed")
+
+            // Repeat the real persistence round-trip with compressed saves,
+            // which are commonly used for sharing and restoring games.
+            val compressedSave = UncivFiles.gameInfoToString(scenario, forceZip = true)
+            val loadedCompressed = UncivFiles.gameInfoFromString(compressedSave)
+            val zippedDefender = loadedCompressed.getCivilization(defender.civID)
+            val zippedAggressor = loadedCompressed.getCivilization(aggressor.civID)
+            val zippedAlly = loadedCompressed.getCivilization(ally.civID)
+            check(!zippedDefender.isAtWarWith(zippedAggressor))
+            check(!zippedAggressor.isAtWarWith(zippedDefender))
+            check(zippedDefender.getDiplomacyManager(zippedAggressor)!!.turnsToPeaceTreaty() > 0)
+            check(zippedAggressor.getDiplomacyManager(zippedDefender)!!.turnsToPeaceTreaty() > 0)
+            check(zippedDefender.getDiplomacyManager(zippedAlly)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            check(zippedAlly.isAtWarWith(zippedAggressor))
+            note("SIM scenario aiPeaceCompressedSaveRoundTrip=passed")
+
+            // The loaded state must be playable, not merely deserializable.
+            // One actual turn catches stale references and diplomacy updates
+            // that only fail after the next turn is processed.
+            loadedGame.nextTurn()
+            check(loadedGame.civilizations.any { it.isMajorCiv() && it.cities.isNotEmpty() })
+            note("SIM scenario aiPeaceLoadedGameNextTurn=passed")
+
+            // Invoke the production counteroffer generator on the actual
+            // AI-generated peace request. A counteroffer may legitimately be
+            // unavailable; when present it must retain reciprocal peace terms
+            // and must not create an unlimited city demand.
+            val tradeAutomation = com.unciv.logic.automation.civilization.TradeAutomation
+            val counterMethod = tradeAutomation.javaClass.declaredMethods.first {
+                it.name.startsWith("getCounteroffer") &&
+                    it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == com.unciv.logic.civilization.Civilization::class.java
+            }
+            counterMethod.isAccessible = true
+            val counter = counterMethod.invoke(tradeAutomation, defender, actualOffer)
+                as? com.unciv.logic.trade.TradeRequest
+            if (counter != null) {
+                check(counter.requestingCiv == defender.civID)
+                check(counter.trade.isPeaceTreaty())
+                check(counter.trade.ourOffers.any { it.name == Constants.peaceTreaty })
+                check(counter.trade.theirOffers.any { it.name == Constants.peaceTreaty })
+                check((counter.trade.ourOffers + counter.trade.theirOffers).count {
+                    it.type == com.unciv.logic.trade.TradeOfferType.City
+                } <= 1)
+            }
+            note("SIM scenario aiPeaceCounterofferSafeguards=passed generated=${counter != null}")
+
+            // Process the counteroffer through the production AI trade
+            // response path, not merely the private proposal generator.
+            if (counter != null) {
+                val counterGame = UncivFiles.gameInfoFromString(
+                    UncivFiles.gameInfoToString(scenario, forceZip = false)
+                )
+                val counterAggressor = counterGame.getCivilization(aggressor.civID)
+                val counterDefender = counterGame.getCivilization(defender.civID)
+                // Restore a bilateral war in this independent game copy so
+                // the counteroffer is a valid peace negotiation.
+                val clonedPeace = counterDefender.getDiplomacyManager(counterAggressor)!!
+                clonedPeace.trades.removeAll { trade ->
+                    (trade.ourOffers + trade.theirOffers).any { it.name == Constants.peaceTreaty }
+                }
+                counterAggressor.getDiplomacyManager(counterDefender)!!.trades.removeAll { trade ->
+                    (trade.ourOffers + trade.theirOffers).any { it.name == Constants.peaceTreaty }
+                }
+                clonedPeace.declareWar()
+                check(counterDefender.isAtWarWith(counterAggressor))
+                val response = com.unciv.logic.trade.TradeRequest(
+                    defender.civID, counter.trade.clone()
+                )
+                counterAggressor.tradeRequests.add(response)
+                val pendingBefore = counterAggressor.tradeRequests.size
+                com.unciv.logic.automation.civilization.TradeAutomation.respondToTradeRequests(
+                    counterAggressor, true
+                )
+                check(counterAggressor.tradeRequests.size < pendingBefore) {
+                    "SIM AI counteroffer response was not consumed"
+                }
+                val replyCount = counterDefender.tradeRequests.count {
+                    it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+                }
+                check(replyCount <= 1) {
+                    "SIM AI counteroffer processing generated duplicate peace replies"
+                }
+                note("SIM scenario aiPeaceCounterofferResponse=passed replies=$replyCount")
+
+                // A subsequent AI response pass must not resurrect the
+                // consumed request or create a new negotiation ping-pong.
+                com.unciv.logic.automation.civilization.TradeAutomation.respondToTradeRequests(
+                    counterAggressor, true
+                )
+                check(counterAggressor.tradeRequests.isEmpty())
+                check(counterDefender.tradeRequests.count {
+                    it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+                } == replyCount)
+                note("SIM scenario aiPeaceCounterofferNoPingPong=passed")
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
         var previousWarPairs: Set<String> = emptySet()
         var observedWarStart = false
         var observedWarEnd = false
@@ -272,7 +822,7 @@ object OjhBenchmark {
      * Players asked for above the number of major civilizations become city
      * states, which is what the outside driver does too.
      */
-    private fun start(players: Int, size: String, mapPath: String?, seed: Long): GameInfo {
+    private fun start(players: Int, size: String, mapPath: String?, seed: Long, minimumCityStates: Int = 0): GameInfo {
         val setup = GameSetupInfo()
         val ruleset = RulesetCache[BaseRuleset.Civ_V_GnK.fullName]!!
 
@@ -282,7 +832,7 @@ object OjhBenchmark {
             if (!nation.isMajorCiv) continue
             chosen.add(Player(nation.name, PlayerType.AI))
         }
-        val cityStates = (players - chosen.size).coerceAtLeast(0)
+        val cityStates = (players - chosen.size).coerceAtLeast(minimumCityStates)
         chosen.add(Player(Constants.spectator, PlayerType.Human))
 
         setup.gameParameters.apply {
