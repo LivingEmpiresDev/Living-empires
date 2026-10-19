@@ -156,6 +156,22 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `AI ambassador assignment requires an embassy and keeps stable identity`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        com.unciv.logic.automation.civilization.DiplomacyAutomation.appointEmbassyRepresentatives(a)
+        assertEquals(null, diplomacy.ambassadorName)
+
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        com.unciv.logic.automation.civilization.DiplomacyAutomation.appointEmbassyRepresentatives(a)
+        val assignedName = diplomacy.ambassadorName
+        assertTrue(assignedName != null && assignedName.contains(" "))
+        assertFalse(assignedName!!.contains("$" + "{"))
+        com.unciv.logic.automation.civilization.DiplomacyAutomation.appointEmbassyRepresentatives(a)
+        assertEquals(assignedName, diplomacy.ambassadorName)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
