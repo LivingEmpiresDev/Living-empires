@@ -157,6 +157,25 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `goodwill mission requires embassy and ambassador and advances through turns`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(5, diplomacy.clone().ambassadorMissionTurns)
+        with(DiplomacyTurnManager) { diplomacy.nextTurn() }
+        assertEquals(4, diplomacy.ambassadorMissionTurns)
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 0f)
+        diplomacy.diplomaticModifiers.remove(DiplomaticModifiers.EstablishedEmbassy.name)
+        with(DiplomacyTurnManager) { diplomacy.nextTurn() }
+        assertEquals(0, diplomacy.ambassadorMissionTurns)
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
