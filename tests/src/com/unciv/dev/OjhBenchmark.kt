@@ -323,6 +323,21 @@ object OjhBenchmark {
                 check(majorCopy.getDiplomacyManager(minorCopy)!!.diplomaticStatus ==
                     minorCopy.getDiplomacyManager(majorCopy)!!.diplomaticStatus)
                 note("SIM scenario cityStateBilateralWarPeace=passed")
+
+                // Save and reload the actual city-state peace transition,
+                // including reciprocal diplomatic status and no residual war.
+                val minorSave = UncivFiles.gameInfoToString(cityStateGame, forceZip = true)
+                val minorLoaded = UncivFiles.gameInfoFromString(minorSave)
+                val loadedMajor = minorLoaded.getCivilization(defender.civID)
+                val loadedMinor = minorLoaded.getCivilization(cityState.civID)
+                check(!loadedMajor.isAtWarWith(loadedMinor))
+                check(!loadedMinor.isAtWarWith(loadedMajor))
+                check(loadedMajor.getDiplomacyManager(loadedMinor)!!.diplomaticStatus ==
+                    loadedMinor.getDiplomacyManager(loadedMajor)!!.diplomaticStatus)
+                check(!loadedMajor.getDiplomacyManager(loadedMinor)!!.hasFlag(DiplomacyFlags.DefensivePact))
+                check(!loadedMinor.getDiplomacyManager(loadedMajor)!!.hasFlag(DiplomacyFlags.DefensivePact))
+                note("SIM scenario cityStatePeaceSaveReload=passed")
+
             }
 
 
