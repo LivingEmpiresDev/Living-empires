@@ -72,6 +72,18 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         }
 
 
+        // Living Empires: expose the appointed representative in the existing diplomacy screen.
+        // Embassy eligibility is owned by DiplomacyManager, not duplicated in the UI.
+        if (diplomacyManager.hasModifier(DiplomaticModifiers.EstablishedEmbassy)
+            || diplomacyManager.hasModifier(DiplomaticModifiers.SharedEmbassies)
+        ) {
+            val representative = diplomacyManager.ambassadorName
+            val embassyLabel = if (representative == null)
+                "Embassy: No ambassador appointed"
+            else "Ambassador: $representative"
+            diplomacyTable.add(embassyLabel.toLabel(Color.LIGHT_GRAY)).row()
+        }
+
         val demandsButton = "Demands".toTextButton()
         demandsButton.onClick {
             diplomacyScreen.rightSideTable.clear()
