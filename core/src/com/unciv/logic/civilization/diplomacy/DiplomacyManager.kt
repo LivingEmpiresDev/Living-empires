@@ -235,6 +235,22 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
+    var ambassadorMissionTurns = 0
+
+    /**
+     * Start a time-limited diplomatic goodwill mission from an established embassy.
+     * Mission effects and resource costs will be integrated with AI and player actions.
+     */
+    fun startAmbassadorGoodwillMission(): Boolean {
+        if (ambassadorMissionTurns > 0 || ambassadorName.isNullOrBlank()) return false
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        if (diplomaticStatus == DiplomaticStatus.War) return false
+        ambassadorMissionTurns = 5
+        return true
+    }
+
     /**
      * Stage 5: a directional trust score derived from existing diplomatic history.
      * No duplicate state is stored: betrayal and broken-promise modifiers already
@@ -339,6 +355,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.flagsCountdown.putAll(flagsCountdown)
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
         toReturn.ambassadorName = ambassadorName
+        toReturn.ambassadorMissionTurns = ambassadorMissionTurns
         toReturn.warExhaustion = warExhaustion
         toReturn.turnsAtWar = turnsAtWar
         toReturn.totalOfScienceDuringRA = totalOfScienceDuringRA
