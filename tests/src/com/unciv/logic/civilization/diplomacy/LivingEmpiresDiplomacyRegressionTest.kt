@@ -166,4 +166,26 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertTrue("Attacks should become available only after expiry", manager.canAttack())
     }
 
+
+    @Test fun stageFiveEmbassyMissionAndDemandStateSurvivesClone() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        original.ambassadorName = "Envoy"
+        original.ambassadorMissionTurns = 4
+        original.diplomaticDemandCooldown = 9
+
+        val restored = original.clone()
+        assertEquals("Envoy", restored.ambassadorName)
+        assertEquals(4, restored.ambassadorMissionTurns)
+        assertEquals(9, restored.diplomaticDemandCooldown)
+        assertTrue(restored.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
+
+        restored.ambassadorName = "Replacement"
+        restored.ambassadorMissionTurns = 1
+        restored.diplomaticDemandCooldown = 2
+        assertEquals("Envoy", original.ambassadorName)
+        assertEquals(4, original.ambassadorMissionTurns)
+        assertEquals(9, original.diplomaticDemandCooldown)
+    }
 }
