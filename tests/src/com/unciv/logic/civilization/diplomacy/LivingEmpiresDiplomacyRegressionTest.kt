@@ -210,6 +210,30 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(7, manager.diplomaticDemandCooldown)
     }
 
+    @Test fun stageSixMissionCannotRestartWhileAlreadyActive() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 5
+        // Active-mission guard must run before accessing civilization transients.
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(5, manager.ambassadorMissionTurns)
+    }
+
+    @Test fun stageSixMissionAndDemandCooldownCloneIndependently() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorName = "Envoy"
+        original.ambassadorMissionTurns = 5
+        original.diplomaticDemandCooldown = 10
+        val clone = original.clone()
+        clone.ambassadorMissionTurns--
+        clone.diplomaticDemandCooldown--
+        assertEquals(5, original.ambassadorMissionTurns)
+        assertEquals(10, original.diplomaticDemandCooldown)
+        assertEquals(4, clone.ambassadorMissionTurns)
+        assertEquals(9, clone.diplomaticDemandCooldown)
+    }
+
     @Test fun stageSixMissionProgressRemainsIndependentAfterClone() {
         val original = DiplomacyManager()
         DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
