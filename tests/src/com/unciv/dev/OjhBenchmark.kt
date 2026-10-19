@@ -477,6 +477,32 @@ object OjhBenchmark {
             }) { "SIM AI peace offer demands a capital" }
             note("SIM scenario aiPeaceCityConcessionSafeguards=passed")
 
+            // Exercise expiry and snapshot isolation without mutating the
+            // accepted agreement in the live game.
+            val snapshotTreaty = savedDefenderDiplomacy.trades.flatMap {
+                it.ourOffers + it.theirOffers
+            }.firstOrNull { it.name == Constants.peaceTreaty && it.duration > 0 }
+            check(snapshotTreaty != null) { "SIM cloned peace agreement has no active treaty" }
+            val liveTreatyTurns = acceptedDefenderManager.turnsToPeaceTreaty()
+            snapshotTreaty.duration = 0
+            check(acceptedDefenderManager.turnsToPeaceTreaty() == liveTreatyTurns) {
+                "SIM editing snapshot mutated live peace agreement"
+            }
+            check(savedDefenderDiplomacy.turnsToPeaceTreaty() >= 0)
+            note("SIM scenario acceptedPeaceSnapshotIsolation=passed")
+
+            // The AI peace agreement must not silently dissolve a separate
+            // alliance or terminate a third party's ongoing war.
+            check(defender.getDiplomacyManager(ally)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact) {
+                "SIM bilateral AI peace unexpectedly dissolved defensive pact"
+            }
+            check(ally.isAtWarWith(aggressor)) {
+                "SIM bilateral AI peace unexpectedly ended ally's separate war"
+            }
+            note("SIM scenario aiPeacePreservesDefensiveAlliance=passed")
+
+
 
 
 
