@@ -37,8 +37,15 @@ object DiplomacyTurnManager {
                     !hasModifier(DiplomaticModifiers.SharedEmbassies)) ||
                 diplomaticStatus == DiplomaticStatus.War)
                 ambassadorMissionTurns = 0
-            else
+            else {
                 ambassadorMissionTurns--
+                // The initial goodwill bonus is awarded when the mission starts.
+                // Only a mission that survives its full duration earns completion goodwill.
+                if (ambassadorMissionTurns == 0) {
+                    otherCiv.getDiplomacyManager(civInfo)
+                        ?.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
+                }
+            }
         }
         nextTurnFlags()
         if (civInfo.isCityState && otherCiv.isMajorCiv())
