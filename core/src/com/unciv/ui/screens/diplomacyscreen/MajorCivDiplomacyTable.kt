@@ -115,6 +115,25 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         diplomacyTable.add("Their trust in us: $trustDescription (${theirTrust.toInt()}/100)"
             .toLabel(Color.LIGHT_GRAY)).row()
 
+        // Explain the source of lost trust using the same persisted history as the AI.
+        val trustCauses = listOf(
+            DiplomaticModifiers.BetrayedDeclarationOfFriendship to "Broken friendship",
+            DiplomaticModifiers.BetrayedDefensivePact to "Betrayed defensive pact",
+            DiplomaticModifiers.BetrayedPromiseToNotSettleCitiesNearUs to "Broken settlement promise",
+            DiplomaticModifiers.BetrayedPromiseToNotSpreadReligionToUs to "Broken religious promise",
+            DiplomaticModifiers.BetrayedPromiseToNotSendingSpiesToUs to "Broken espionage promise",
+            DiplomaticModifiers.BetrayedPromiseToNotAttackUs to "Broken non-aggression promise",
+            DiplomaticModifiers.BetrayedPromiseToNotAttackOtherCiv to "Broken war promise",
+            DiplomaticModifiers.DeclaredWarOnUs to "Declared war"
+        )
+        val activeCauses = trustCauses.filter { (modifier, _) ->
+            (otherCivDiplomacyManager.diplomaticModifiers[modifier.name] ?: 0f) < 0f
+        }
+        if (activeCauses.isNotEmpty()) {
+            diplomacyTable.add("Trust damaged by: ${activeCauses.joinToString { it.second }}"
+                .toLabel(Color.LIGHT_GRAY)).row()
+        }
+
         val demandsButton = "Demands".toTextButton()
         demandsButton.onClick {
             diplomacyScreen.rightSideTable.clear()
