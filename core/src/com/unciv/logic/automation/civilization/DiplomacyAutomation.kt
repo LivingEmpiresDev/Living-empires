@@ -320,6 +320,9 @@ object DiplomacyAutomation {
     fun wantsToSignDefensivePact(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val ourDiploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (ourDiploManager.hasFlag(DiplomacyFlags.DeclinedDefensivePact)) return false
+        // Severe historical betrayal blocks a defensive alliance even when
+        // positive modifiers temporarily raise the overall diplomatic opinion.
+        if (ourDiploManager.trustScore() < 20f) return false
         if (ourDiploManager.opinionOfOtherCiv() < 65f * civInfo.getPersonality().inverseScaledFocus(PersonalityValue.Aggressive)) return false
         val commonknownCivs = ourDiploManager.getCommonKnownCivs()
 
