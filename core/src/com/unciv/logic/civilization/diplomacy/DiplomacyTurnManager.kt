@@ -24,6 +24,12 @@ object DiplomacyTurnManager {
         nextTurnDiplomaticModifiers()
         advanceWarExhaustion()
         if (diplomaticDemandCooldown > 0) diplomaticDemandCooldown--
+        // Embassy closure invalidates the appointed representative and active mission.
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) {
+            ambassadorName = null
+            ambassadorMissionTurns = 0
+        }
         // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
         if (ambassadorMissionTurns > 0) {
             if (ambassadorName.isNullOrBlank() ||
