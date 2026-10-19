@@ -131,6 +131,17 @@ class DiplomacyManagerTests {
         testGame.addCity(a, testGame.getTile(HexCoord.Zero))
         testGame.addCity(b, testGame.getTile(2, 0))
         assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+
+        // The exact threshold is inclusive: 20 is allowed, 19 is refused.
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -30f)
+        assertEquals(20f, receivingCivDiplomacy.trustScore())
+        assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -31f)
+        assertEquals(19f, receivingCivDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+
+        // The receiver's distrust must not change the reverse relationship.
+        assertEquals(50f, a.getDiplomacyManager(b)!!.trustScore())
     }
 
     @Test
