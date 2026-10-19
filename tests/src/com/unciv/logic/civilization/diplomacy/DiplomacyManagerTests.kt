@@ -301,6 +301,8 @@ class DiplomacyManagerTests {
         assertEquals("Envoy", restored.ambassadorName)
         assertEquals(5, restored.ambassadorMissionTurns)
         assertEquals(10, restored.diplomaticDemandCooldown)
+        // Serialization clones require the same transient civilization binding as a loaded game.
+        restored.civInfo = a
         with(DiplomacyTurnManager) { restored.nextTurn() }
         assertEquals(4, restored.ambassadorMissionTurns)
         assertEquals(9, restored.diplomaticDemandCooldown)
