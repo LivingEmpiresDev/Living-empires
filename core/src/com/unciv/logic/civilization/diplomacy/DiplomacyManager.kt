@@ -235,6 +235,27 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /**
+     * Withdraw only our embassy. Preserve the other civilization's independent embassy
+     * and representative, while updating the bilateral embassy modifiers consistently.
+     */
+    fun withdrawEmbassy(): Boolean {
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        val counterpart = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        removeModifier(DiplomaticModifiers.EstablishedEmbassy)
+        removeModifier(DiplomaticModifiers.SharedEmbassies)
+        counterpart.removeModifier(DiplomaticModifiers.ReceivedEmbassy)
+        counterpart.removeModifier(DiplomaticModifiers.SharedEmbassies)
+        if (counterpart.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
+            counterpart.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        if (hasModifier(DiplomaticModifiers.ReceivedEmbassy))
+            setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
+        ambassadorName = null
+        ambassadorMissionTurns = 0
+        return true
+    }
+
     /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
     var ambassadorMissionTurns = 0
 
