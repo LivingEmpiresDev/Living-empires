@@ -201,6 +201,24 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `goodwill mission recipient war state prevents charging and reward`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val receiving = b.getDiplomacyManager(a)!!
+        outgoing.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(outgoing.appointAmbassador("Envoy"))
+        a.addGold(50)
+        receiving.diplomaticStatus = DiplomaticStatus.War
+        assertFalse(outgoing.startAmbassadorGoodwillMission())
+        assertEquals(50, a.gold)
+        assertFalse(receiving.hasModifier(DiplomaticModifiers.GaveUsGifts))
+        receiving.diplomaticStatus = DiplomaticStatus.Peace
+        assertTrue(outgoing.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        assertTrue(receiving.hasModifier(DiplomaticModifiers.GaveUsGifts))
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
