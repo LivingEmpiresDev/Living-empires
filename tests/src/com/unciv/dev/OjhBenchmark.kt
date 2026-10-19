@@ -502,6 +502,24 @@ object OjhBenchmark {
             }
             note("SIM scenario aiPeacePreservesDefensiveAlliance=passed")
 
+            // Full GameInfo snapshot, rather than only a diplomacy manager:
+            // reconstruct all transient references and verify the negotiated
+            // peace and separate war still agree across civilizations.
+            val restoredScenario = scenario.clone()
+            restoredScenario.setTransients()
+            val restoredDefender = restoredScenario.getCivilization(defender.civID)
+            val restoredAggressor = restoredScenario.getCivilization(aggressor.civID)
+            val restoredAlly = restoredScenario.getCivilization(ally.civID)
+            check(!restoredDefender.isAtWarWith(restoredAggressor))
+            check(!restoredAggressor.isAtWarWith(restoredDefender))
+            check(restoredDefender.getDiplomacyManager(restoredAggressor)!!.turnsToPeaceTreaty() > 0)
+            check(restoredAggressor.getDiplomacyManager(restoredDefender)!!.turnsToPeaceTreaty() > 0)
+            check(restoredAlly.isAtWarWith(restoredAggressor))
+            check(restoredDefender.getDiplomacyManager(restoredAlly)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            note("SIM scenario fullGameDiplomacySnapshot=passed")
+
+
 
 
 
