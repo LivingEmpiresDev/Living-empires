@@ -73,6 +73,18 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
         }
 
 
+        // Show both directions: an embassy established by the other nation is not
+        // necessarily the same as the embassy our civilization has established.
+        val foreignEmbassyPresent =
+            otherCivDiplomacyManager.hasModifier(DiplomaticModifiers.EstablishedEmbassy) ||
+            otherCivDiplomacyManager.hasModifier(DiplomaticModifiers.SharedEmbassies)
+        val foreignEmbassyStatus = if (foreignEmbassyPresent) {
+            val foreignAmbassador = otherCivDiplomacyManager.ambassadorName
+            if (foreignAmbassador.isNullOrBlank()) "Their embassy: Established (no ambassador)"
+            else "Their embassy: Established — Ambassador: $foreignAmbassador"
+        } else "Their embassy: Not established"
+        diplomacyTable.add(foreignEmbassyStatus.toLabel(Color.LIGHT_GRAY)).row()
+
         // Living Empires: expose the appointed representative in the existing diplomacy screen.
         // Embassy eligibility is owned by DiplomacyManager, not duplicated in the UI.
         if (diplomacyManager.hasModifier(DiplomaticModifiers.EstablishedEmbassy)
