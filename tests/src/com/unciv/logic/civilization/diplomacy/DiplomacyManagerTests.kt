@@ -156,6 +156,28 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `ambassador replacement preserves outgoing diplomatic identity`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val incoming = b.getDiplomacyManager(a)!!
+        outgoing.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        incoming.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+
+        assertTrue(outgoing.appointAmbassador("Amara Vale"))
+        assertTrue(incoming.appointAmbassador("Niko Renn"))
+        assertTrue(outgoing.appointAmbassador("Mira Solari"))
+        assertEquals("Mira Solari", outgoing.ambassadorName)
+        assertEquals("Niko Renn", incoming.ambassadorName)
+
+        // Removing embassies is a bilateral diplomatic event, not just a UI reset.
+        a.diplomacyFunctions.removeEmbassies(b)
+        assertEquals(null, outgoing.ambassadorName)
+        assertEquals(null, incoming.ambassadorName)
+        assertFalse(outgoing.appointAmbassador("Amara Vale"))
+        assertFalse(incoming.appointAmbassador("Niko Renn"))
+    }
+
+    @Test
     fun `AI ambassador assignment requires an embassy and keeps stable identity`() {
         meet(a, b)
         val diplomacy = a.getDiplomacyManager(b)!!
