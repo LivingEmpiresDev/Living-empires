@@ -51,7 +51,7 @@ object DiplomacyAutomation {
     }
     
     @Readonly
-    internal fun wantsToSignDeclarationOfFrienship(civInfo: Civilization, otherCiv: Civilization): Boolean {
+    fun wantsToSignDeclarationOfFrienship(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val diploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (diploManager.hasFlag(DiplomacyFlags.DeclinedDeclarationOfFriendship)) return false
         // A severe betrayal rules out a new friendship even if unrelated bonuses lift opinion.
