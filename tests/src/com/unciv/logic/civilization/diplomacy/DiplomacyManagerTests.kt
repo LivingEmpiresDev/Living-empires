@@ -157,6 +157,17 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `AI refuses friendship and open borders after severe betrayal`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(10f, ourDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDeclarationOfFrienship(a, b))
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToOpenBorders(a, b))
+        assertEquals(50f, b.getDiplomacyManager(a)!!.trustScore())
+    }
+
+    @Test
     fun `AI defensive pact refuses severe betrayal regardless of positive opinion`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
