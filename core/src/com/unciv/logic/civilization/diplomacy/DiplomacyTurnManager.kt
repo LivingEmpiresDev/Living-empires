@@ -23,6 +23,16 @@ object DiplomacyTurnManager {
         updateHasOpenBorders()
         nextTurnDiplomaticModifiers()
         advanceWarExhaustion()
+        // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
+        if (ambassadorMissionTurns > 0) {
+            if (ambassadorName.isNullOrBlank() ||
+                (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+                    !hasModifier(DiplomaticModifiers.SharedEmbassies)) ||
+                diplomaticStatus == DiplomaticStatus.War)
+                ambassadorMissionTurns = 0
+            else
+                ambassadorMissionTurns--
+        }
         nextTurnFlags()
         if (civInfo.isCityState && otherCiv.isMajorCiv())
             nextTurnCityStateInfluence()
