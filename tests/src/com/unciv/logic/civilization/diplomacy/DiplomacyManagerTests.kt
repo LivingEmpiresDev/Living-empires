@@ -219,6 +219,39 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `diplomatic tribute refusal imposes cooldown without moving gold`() {
+        meet(a, b)
+        val sender = a.getDiplomacyManager(b)!!
+        val receiver = b.getDiplomacyManager(a)!!
+        sender.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(sender.appointAmbassador("Envoy"))
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(10, sender.diplomaticDemandCooldown)
+        assertEquals(10, sender.clone().diplomaticDemandCooldown)
+        assertEquals(0, a.gold)
+        assertEquals(0, b.gold)
+        assertTrue(receiver.hasModifier(DiplomaticModifiers.UnacceptableDemands))
+        assertFalse(sender.demandDiplomaticTribute())
+        with(DiplomacyTurnManager) { sender.nextTurn() }
+        assertEquals(9, sender.diplomaticDemandCooldown)
+    }
+
+    @Test
+    fun `diplomatic tribute cannot be demanded without ambassador or during war`() {
+        meet(a, b)
+        val sender = a.getDiplomacyManager(b)!!
+        val receiver = b.getDiplomacyManager(a)!!
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(0, sender.diplomaticDemandCooldown)
+        sender.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertFalse(sender.demandDiplomaticTribute())
+        assertTrue(sender.appointAmbassador("Envoy"))
+        receiver.diplomaticStatus = DiplomaticStatus.War
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(0, sender.diplomaticDemandCooldown)
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
