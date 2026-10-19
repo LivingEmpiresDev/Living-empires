@@ -289,6 +289,26 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `ambassador mission and demand cooldown survive cloning and resume turns`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        a.addGold(50)
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertFalse(diplomacy.demandDiplomaticTribute())
+        val restored = diplomacy.clone()
+        assertEquals("Envoy", restored.ambassadorName)
+        assertEquals(5, restored.ambassadorMissionTurns)
+        assertEquals(10, restored.diplomaticDemandCooldown)
+        with(DiplomacyTurnManager) { restored.nextTurn() }
+        assertEquals(4, restored.ambassadorMissionTurns)
+        assertEquals(9, restored.diplomaticDemandCooldown)
+        assertEquals(5, diplomacy.ambassadorMissionTurns)
+        assertEquals(10, diplomacy.diplomaticDemandCooldown)
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
