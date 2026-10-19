@@ -252,6 +252,27 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `diplomatic tribute acceptance transfers gold once and expires after ten turns`() {
+        meet(a, b)
+        val sender = a.getDiplomacyManager(b)!!
+        val receiver = b.getDiplomacyManager(a)!!
+        sender.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(sender.appointAmbassador("Envoy"))
+        b.addGold(100)
+        receiver.setModifier(DiplomaticModifiers.YearsOfPeace, 200f)
+        assertTrue(sender.demandDiplomaticTribute())
+        assertEquals(25, a.gold)
+        assertEquals(75, b.gold)
+        assertEquals(10, sender.diplomaticDemandCooldown)
+        assertTrue(receiver.hasModifier(DiplomaticModifiers.UnacceptableDemands))
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(25, a.gold)
+        assertEquals(75, b.gold)
+        repeat(10) { with(DiplomacyTurnManager) { sender.nextTurn() } }
+        assertEquals(0, sender.diplomaticDemandCooldown)
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
