@@ -115,6 +115,19 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             diplomacyTable.add(missionButton).row()
             if (diplomacyManager.ambassadorMissionTurns > 0)
                 diplomacyTable.add("Mission: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
+            val demandButton = "Demand Tribute (25 Gold)".toTextButton()
+            demandButton.onClick {
+                diplomacyManager.demandDiplomaticTribute()
+                diplomacyScreen.updateRightSide(otherCiv)
+            }
+            if (diplomacyScreen.isNotPlayersTurn() ||
+                diplomacyManager.ambassadorName.isNullOrBlank() ||
+                diplomacyManager.diplomaticDemandCooldown > 0 ||
+                diplomacyManager.diplomaticStatus == DiplomaticStatus.War)
+                demandButton.disable()
+            diplomacyTable.add(demandButton).row()
+            if (diplomacyManager.diplomaticDemandCooldown > 0)
+                diplomacyTable.add("Demand cooldown: ${diplomacyManager.diplomaticDemandCooldown} turns".toLabel(Color.LIGHT_GRAY)).row()
         }
 
         // Trust is directional: this is how the other civilization evaluates us.
