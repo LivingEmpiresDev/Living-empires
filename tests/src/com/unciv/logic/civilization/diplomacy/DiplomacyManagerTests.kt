@@ -315,12 +315,9 @@ class DiplomacyManagerTests {
         meet(a, b)
         val ours = a.getDiplomacyManager(b)!!
         val theirs = b.getDiplomacyManager(a)!!
-        ours.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
-        ours.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
-        theirs.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
-        theirs.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
-        ours.setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
-        theirs.setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
+        // Real mutual embassy trades replace directional flags with SharedEmbassies.
+        ours.setModifier(DiplomaticModifiers.SharedEmbassies, 3f)
+        theirs.setModifier(DiplomaticModifiers.SharedEmbassies, 3f)
         assertTrue(ours.appointAmbassador("Our Envoy"))
         assertTrue(theirs.appointAmbassador("Their Envoy"))
         a.addGold(50)
