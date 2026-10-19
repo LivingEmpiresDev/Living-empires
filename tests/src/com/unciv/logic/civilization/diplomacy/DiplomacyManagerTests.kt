@@ -133,6 +133,30 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `war declaration and multiple betrayals reduce trust with bounded recovery`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        val theirDiplomacy = b.getDiplomacyManager(a)!!
+
+        ourDiplomacy.setModifier(DiplomaticModifiers.DeclaredWarOnUs, -20f)
+        assertEquals(30f, ourDiplomacy.trustScore())
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(0f, ourDiplomacy.trustScore())
+        assertEquals(50f, theirDiplomacy.trustScore())
+
+        // The existing diplomacy turn manager gradually forgets both offences.
+        repeat(10) { with(DiplomacyTurnManager) { ourDiplomacy.nextTurn() } }
+        assertTrue(ourDiplomacy.trustScore() >= 0f)
+        assertTrue(ourDiplomacy.trustScore() <= 50f)
+        assertEquals(50f, theirDiplomacy.trustScore())
+
+        // Removing the historical penalties restores baseline, never exceeding 100.
+        ourDiplomacy.setModifier(DiplomaticModifiers.DeclaredWarOnUs, 0f)
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, 0f)
+        assertEquals(50f, ourDiplomacy.trustScore())
+    }
+
+    @Test
     fun `AI embassy trust gate rejects betrayal and permits recovery`() {
         meet(a, b)
         val receivingCivDiplomacy = b.getDiplomacyManager(a)!!
