@@ -54,6 +54,8 @@ object DiplomacyAutomation {
     internal fun wantsToSignDeclarationOfFrienship(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val diploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (diploManager.hasFlag(DiplomacyFlags.DeclinedDeclarationOfFriendship)) return false
+        // A severe betrayal rules out a new friendship even if unrelated bonuses lift opinion.
+        if (diploManager.trustScore() < 20f) return false
         // Shortcut, if it is below favorable then don't consider it
         if (diploManager.isRelationshipLevelLT(RelationshipLevel.Favorable)) return false
 
@@ -249,6 +251,8 @@ object DiplomacyAutomation {
     fun wantsToOpenBorders(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val ourDiploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (ourDiploManager.hasFlag(DiplomacyFlags.DeclinedOpenBorders)) return false
+        // Do not grant strategic access to a civilization we deeply distrust.
+        if (ourDiploManager.trustScore() < 20f) return false
         if (ourDiploManager.isRelationshipLevelLT(RelationshipLevel.Favorable)) return false
         // Don't accept if they are at war with our friends, they might use our land to attack them
         if (civInfo.diplomacy.values.any { it.isRelationshipLevelGE(RelationshipLevel.Friend) && it.otherCiv.isAtWarWith(otherCiv) })
