@@ -161,7 +161,7 @@ class DiplomacyManagerTests {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
         // Strong positive diplomatic history cannot override a severe betrayal.
-        ourDiplomacy.setModifier(DiplomaticModifiers.YearsOfPeace, 100f)
+        ourDiplomacy.setModifier(DiplomaticModifiers.YearsOfPeace, 200f)
         ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
         assertEquals(10f, ourDiplomacy.trustScore())
         assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDefensivePact(a, b))
