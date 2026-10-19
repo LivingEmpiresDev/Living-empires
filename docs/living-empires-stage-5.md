@@ -49,3 +49,13 @@ These are approved expansion features but **not represented as already implement
 - War exhaustion and AI peace integration: implemented with passing CI at commit `1bb5324`.
 - Additional diplomatic reputation, embassy foundation, named ambassadors, missions, demands and broader strategic AI: pending.
 - Full-game simulations and human gameplay acceptance: pending.
+
+
+## Pre-simulation integration checkpoint — 19 October 2026
+- Master now has `.github/workflows/permanent-regression.yml` with 100-turn AI smoke scenarios for seeds 101, 202 and 303, a 500-turn AI stress scenario for seed 404, turn-trace and war-telemetry validators, JVM tests and Android APK build. Master run 39169316256 reports all five jobs successful.
+- **Do not infer Stage 5 simulation coverage from master results:** the Stage 5 branch is behind master and its ambassador/war-exhaustion changes have not been tested by that master run.
+- Before claiming Stage 5 simulation acceptance, reconcile master into the Stage 5 branch without overwriting either branch, resolve any diplomacy test/turn-manager conflicts, and execute the permanent regression workflow on the resulting Stage 5 commit.
+- Add scenario-specific assertions for ambassador appointment only with an established embassy, stable non-placeholder names, independent bilateral assignments, persistence through save/load, closure and war cleanup, and AI non-overwrite of existing representatives. Existing unit tests do not establish full simulation coverage.
+- Preserve Stage 2–4 acceptance as baseline. Require verified AI turn traces and explicit assertions for pact expiry, defensive intervention, war/peace transitions and war exhaustion; a successful turn count alone is not sufficient.
+- Continue implementing Stage 5 reputation, diplomatic missions and Android UI independently of the simulator, with targeted tests and ordinary CI for each change.
+- Do not merge Stage 5 to master until final branch-specific simulations, Android build, human gameplay acceptance and explicit approval pass.
