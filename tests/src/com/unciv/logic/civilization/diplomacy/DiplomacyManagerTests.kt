@@ -111,7 +111,7 @@ class DiplomacyManagerTests {
 
         outgoing.setModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs, -100f)
         assertEquals(0f, outgoing.trustScore())
-        outgoing.removeModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs)
+        outgoing.setModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs, 0f)
         assertEquals(15f, outgoing.trustScore())
     }
 
