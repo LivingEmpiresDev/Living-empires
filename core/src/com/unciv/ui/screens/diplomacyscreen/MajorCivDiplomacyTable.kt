@@ -113,6 +113,16 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             if (diplomacyScreen.isNotPlayersTurn()) appointButton.disable()
             diplomacyTable.add(appointButton).row()
 
+            val withdrawButton = "Withdraw Our Embassy".toTextButton()
+            withdrawButton.onClick {
+                ConfirmPopup(diplomacyScreen, "Withdraw our embassy from [${otherCiv.civName}]?", "Withdraw Embassy") {
+                    if (diplomacyManager.withdrawEmbassy())
+                        diplomacyScreen.updateRightSide(otherCiv)
+                }.open()
+            }
+            if (diplomacyScreen.isNotPlayersTurn()) withdrawButton.disable()
+            diplomacyTable.add(withdrawButton).row()
+
             val missionButton = "Goodwill Mission (50 Gold, 5 turns)".toTextButton()
             missionButton.onClick {
                 if (diplomacyManager.startAmbassadorGoodwillMission())
