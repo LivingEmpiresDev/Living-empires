@@ -147,7 +147,10 @@ object DiplomacyAutomation {
     fun launchAmbassadorGoodwillMissions(civInfo: Civilization) {
         if (!civInfo.isMajorCiv() || civInfo.isHuman()) return
         if (civInfo.gold < 150) return // Keep reserves for normal AI priorities.
+        // Avoid funding several missions in one turn from the same treasury.
+        var missionsStarted = 0
         for (otherCiv in civInfo.getKnownCivs()) {
+            if (missionsStarted >= 1) break
             if (!otherCiv.isMajorCiv() || !otherCiv.isAlive()) continue
             val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
             if (diplomacy.ambassadorName.isNullOrBlank() || diplomacy.ambassadorMissionTurns > 0) continue
@@ -155,7 +158,7 @@ object DiplomacyAutomation {
             if ((otherCiv.getDiplomacyManager(civInfo)?.trustScore() ?: 0f) < 20f) continue
             val rng = diplomacy.state.stateBasedRandom("DiplomacyAutomation.ambassadorGoodwillMission")
             if ((1..10).random(rng) <= 8) continue
-            diplomacy.startAmbassadorGoodwillMission()
+            if (diplomacy.startAmbassadorGoodwillMission()) missionsStarted++
         }
     }
 
