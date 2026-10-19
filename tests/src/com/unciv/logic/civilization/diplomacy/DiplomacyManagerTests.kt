@@ -179,6 +179,28 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `goodwill mission does not charge gold without sufficient funds or during war`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        a.addGold(49)
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(49, a.gold)
+        a.addGold(1)
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(50, a.gold)
+        diplomacy.diplomaticStatus = DiplomaticStatus.Peace
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
