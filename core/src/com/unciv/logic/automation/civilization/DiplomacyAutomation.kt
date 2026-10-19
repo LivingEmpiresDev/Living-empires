@@ -223,6 +223,8 @@ object DiplomacyAutomation {
         val theirDiploManager = otherCiv.getDiplomacyManager(civInfo)!!
         if (civInfo.getDiplomacyManager(otherCiv)!!.hasFlag(DiplomacyFlags.DeclinedEmbassy)) return false
         if (theirDiploManager.isRelationshipLevelLT(RelationshipLevel.Afraid)) return false
+        // Stage 5: repeated betrayal makes the AI unwilling to host a foreign embassy.
+        if (theirDiploManager.trustScore() < 20f) return false
 
         // Being able to see their capital can give us an advantage later on, especially with espionage enabled
         if (!civInfo.getCapital()!!.getCenterTile().isExplored(otherCiv)) return true
