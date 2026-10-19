@@ -124,9 +124,13 @@ class DiplomacyManagerTests {
         assertEquals(10f, receivingCivDiplomacy.trustScore())
         assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
 
-        // Repairing the betrayal penalty removes the trust-specific rejection.
+        // Repairing the betrayal penalty restores eligibility, and the AI must
+        // actually accept when no other diplomatic or strategic blocker exists.
         receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, 0f)
         assertEquals(50f, receivingCivDiplomacy.trustScore())
+        testGame.addCity(a, testGame.getTile(HexCoord.Zero))
+        testGame.addCity(b, testGame.getTile(2, 0))
+        assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
     }
 
     @Test
