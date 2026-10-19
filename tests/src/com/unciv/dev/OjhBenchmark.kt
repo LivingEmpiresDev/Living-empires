@@ -299,6 +299,34 @@ object OjhBenchmark {
             check(!expiryReverse.hasFlag(DiplomacyFlags.DefensivePact))
             note("SIM scenario defensivePactReciprocalExpiry=passed")
 
+            // City-state diplomacy must stay separate from major-civilization
+            // defensive pacts. Exercise an actual initialized city-state and
+            // verify that bilateral war and peace remain reciprocal.
+            val cityState = scenario.civilizations.firstOrNull { it.isCityState }
+            if (cityState != null) {
+                defender.diplomacyFunctions.makeCivilizationsMeet(cityState)
+                val majorToMinor = defender.getDiplomacyManager(cityState)!!
+                val minorToMajor = cityState.getDiplomacyManager(defender)!!
+                check(majorToMinor.diplomaticStatus == minorToMajor.diplomaticStatus)
+                check(!majorToMinor.hasFlag(DiplomacyFlags.DefensivePact))
+                check(!minorToMajor.hasFlag(DiplomacyFlags.DefensivePact))
+                val cityStateGame = scenario.clone()
+                cityStateGame.setTransients()
+                val majorCopy = cityStateGame.getCivilization(defender.civID)
+                val minorCopy = cityStateGame.getCivilization(cityState.civID)
+                val minorDiplomacy = majorCopy.getDiplomacyManager(minorCopy)!!
+                minorDiplomacy.declareWar()
+                check(majorCopy.isAtWarWith(minorCopy) && minorCopy.isAtWarWith(majorCopy))
+                minorDiplomacy.makePeace()
+                check(!majorCopy.isAtWarWith(minorCopy) && !minorCopy.isAtWarWith(majorCopy))
+                check(majorCopy.getDiplomacyManager(minorCopy)!!.diplomaticStatus ==
+                    minorCopy.getDiplomacyManager(majorCopy)!!.diplomaticStatus)
+                note("SIM scenario cityStateBilateralWarPeace=passed")
+            } else {
+                note("SIM scenario cityStateBilateralWarPeace=not_exercised no_city_state")
+            }
+
+
             // Resolve the deliberately created war through the production peace
             // transition and verify both sides agree on the resulting state.
             val peaceManager = defender.getDiplomacyManager(aggressor)!!
