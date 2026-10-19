@@ -36,6 +36,8 @@ object DiplomacyTurnManager {
                 (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
                     !hasModifier(DiplomaticModifiers.SharedEmbassies)) ||
                 diplomaticStatus == DiplomaticStatus.War ||
+                // The receiving civilization must still have a reciprocal diplomacy record.
+                otherCiv.getDiplomacyManager(civInfo) == null ||
                 otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus == DiplomaticStatus.War)
                 ambassadorMissionTurns = 0
             else {
