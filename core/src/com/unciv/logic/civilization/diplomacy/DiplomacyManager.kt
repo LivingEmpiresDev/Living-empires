@@ -257,6 +257,33 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /** Turns until another diplomatic demand may be sent to this civilization. */
+    var diplomaticDemandCooldown = 0
+
+    /**
+     * Demand a one-time tribute of 25 gold. Refusal damages relations and still
+     * triggers a cooldown to prevent repeated demands within the same turn.
+     */
+    fun demandDiplomaticTribute(): Boolean {
+        if (diplomaticDemandCooldown > 0 || diplomaticStatus == DiplomaticStatus.War) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        if (ambassadorName.isNullOrBlank()) return false
+        val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        if (receiver.diplomaticStatus == DiplomaticStatus.War) return false
+        diplomaticDemandCooldown = 10
+        if (otherCiv.gold < 25 || receiver.trustScore() < 20f ||
+            receiver.opinionOfOtherCiv() < 30f) {
+            receiver.addModifier(DiplomaticModifiers.UnacceptableDemands, -5f)
+            return false
+        }
+        otherCiv.addGold(-25)
+        civInfo.addGold(25)
+        receiver.addModifier(DiplomaticModifiers.UnacceptableDemands, -3f)
+        return true
+    }
+
     /**
      * Stage 5: a directional trust score derived from existing diplomatic history.
      * No duplicate state is stored: betrayal and broken-promise modifiers already
@@ -362,6 +389,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
         toReturn.ambassadorName = ambassadorName
         toReturn.ambassadorMissionTurns = ambassadorMissionTurns
+        toReturn.diplomaticDemandCooldown = diplomaticDemandCooldown
         toReturn.warExhaustion = warExhaustion
         toReturn.turnsAtWar = turnsAtWar
         toReturn.totalOfScienceDuringRA = totalOfScienceDuringRA
