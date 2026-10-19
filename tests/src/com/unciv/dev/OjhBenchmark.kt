@@ -274,6 +274,29 @@ object OjhBenchmark {
             check(ally.isAtWarWith(aggressor)) { "SIM defensive ally failed to join war" }
             check(!defender.isAtWarWith(ally)) { "SIM defensive allies entered war against each other" }
             note("SIM scenario defensiveIntervention=passed")
+
+            // Reproduce the asymmetric-expiry risk in an isolated full game:
+            // the two civilizations' turns are processed sequentially, but
+            // the first expired timer must clear both diplomatic statuses.
+            val expiryGame = scenario.clone()
+            expiryGame.setTransients()
+            val expiryDefender = expiryGame.getCivilization(defender.civID)
+            val expiryAlly = expiryGame.getCivilization(ally.civID)
+            val expiryForward = expiryDefender.getDiplomacyManager(expiryAlly)!!
+            val expiryReverse = expiryAlly.getDiplomacyManager(expiryDefender)!!
+            expiryForward.setFlag(DiplomacyFlags.DefensivePact, 1)
+            expiryReverse.setFlag(DiplomacyFlags.DefensivePact, 1)
+            expiryGame.nextTurn()
+            check(expiryForward.diplomaticStatus == expiryReverse.diplomaticStatus) {
+                "SIM defensive pact expiry left asymmetric diplomatic statuses"
+            }
+            check(expiryForward.diplomaticStatus != DiplomaticStatus.DefensivePact) {
+                "SIM expired defensive pact remained active"
+            }
+            check(!expiryForward.hasFlag(DiplomacyFlags.DefensivePact))
+            check(!expiryReverse.hasFlag(DiplomacyFlags.DefensivePact))
+            note("SIM scenario defensivePactReciprocalExpiry=passed")
+
             // Resolve the deliberately created war through the production peace
             // transition and verify both sides agree on the resulting state.
             val peaceManager = defender.getDiplomacyManager(aggressor)!!
