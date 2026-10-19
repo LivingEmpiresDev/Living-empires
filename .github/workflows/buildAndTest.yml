@@ -4,6 +4,8 @@ name: Build and test
 on:
   # Triggers the workflow on any push or pull request
   push:
+    branches:
+      - master
   workflow_dispatch:
   # Validate the actual proposed branch changes on pull requests.
   pull_request:
