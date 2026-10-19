@@ -143,8 +143,25 @@ object DiplomacyAutomation {
         }
     }
 
+    /** AI diplomatic missions use the same cost, eligibility and cooldown as player missions. */
+    fun launchAmbassadorGoodwillMissions(civInfo: Civilization) {
+        if (!civInfo.isMajorCiv() || civInfo.isHuman()) return
+        if (civInfo.gold < 150) return // Keep reserves for normal AI priorities.
+        for (otherCiv in civInfo.getKnownCivs()) {
+            if (!otherCiv.isMajorCiv() || !otherCiv.isAlive()) continue
+            val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
+            if (diplomacy.ambassadorName.isNullOrBlank() || diplomacy.ambassadorMissionTurns > 0) continue
+            if (diplomacy.trustScore() < 20f || diplomacy.diplomaticStatus == DiplomaticStatus.War) continue
+            if (otherCiv.getDiplomacyManager(civInfo)?.trustScore() ?: 0f < 20f) continue
+            val rng = diplomacy.state.stateBasedRandom("DiplomacyAutomation.ambassadorGoodwillMission")
+            if ((1..10).random(rng) <= 8) continue
+            diplomacy.startAmbassadorGoodwillMission()
+        }
+    }
+
     internal fun offerToEstablishEmbassy(civInfo: Civilization) {
         appointEmbassyRepresentatives(civInfo)
+        launchAmbassadorGoodwillMissions(civInfo)
         if (civInfo.getCapital() == null) return
         val civsThatWeCanEstablishEmbassyWith = civInfo.getKnownCivs().filter {
             civInfo.diplomacyFunctions.canEstablishEmbassyWith(it)
