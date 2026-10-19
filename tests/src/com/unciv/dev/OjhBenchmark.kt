@@ -464,6 +464,19 @@ object OjhBenchmark {
             check(savedAggressorDiplomacy.diplomaticStatus ==
                 com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
             note("SIM scenario acceptedPeaceSnapshot=passed")
+            // A negotiated peace must not demand the opponent's capital or
+            // final city as reparations.
+            val cityConcessions = actualOffer.trade.ourOffers.filter {
+                it.type == com.unciv.logic.trade.TradeOfferType.City
+            } + actualOffer.trade.theirOffers.filter {
+                it.type == com.unciv.logic.trade.TradeOfferType.City
+            }
+            check(cityConcessions.size <= 1) { "SIM AI peace offer demands multiple cities" }
+            check(cityConcessions.none {
+                it.name == defender.getCapital()?.id || it.name == aggressor.getCapital()?.id
+            }) { "SIM AI peace offer demands a capital" }
+            note("SIM scenario aiPeaceCityConcessionSafeguards=passed")
+
 
 
 
