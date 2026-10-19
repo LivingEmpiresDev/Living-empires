@@ -619,6 +619,18 @@ object OjhBenchmark {
                     "SIM AI counteroffer processing generated duplicate peace replies"
                 }
                 note("SIM scenario aiPeaceCounterofferResponse=passed replies=$replyCount")
+
+                // A subsequent AI response pass must not resurrect the
+                // consumed request or create a new negotiation ping-pong.
+                com.unciv.logic.automation.civilization.TradeAutomation.respondToTradeRequests(
+                    counterAggressor, true
+                )
+                check(counterAggressor.tradeRequests.isEmpty())
+                check(counterDefender.tradeRequests.count {
+                    it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+                } == replyCount)
+                note("SIM scenario aiPeaceCounterofferNoPingPong=passed")
+
             }
 
 
