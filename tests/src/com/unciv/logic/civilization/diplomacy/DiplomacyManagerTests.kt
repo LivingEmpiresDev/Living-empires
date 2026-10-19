@@ -543,4 +543,44 @@ class DiplomacyManagerTests {
         assertEquals(198f, cityState.getDiplomacyManager(liberator)!!.getInfluence(), 0.01f)
     }
 
+    @Test
+    fun `defensive pact expiration synchronizes both civilizations on the first turn`() {
+        meet(a, b)
+        val aToB = a.getDiplomacyManager(b)!!
+        val bToA = b.getDiplomacyManager(a)!!
+        aToB.diplomaticStatus = DiplomaticStatus.DefensivePact
+        bToA.diplomaticStatus = DiplomaticStatus.DefensivePact
+        aToB.setFlag(DiplomacyFlags.DefensivePact, 1)
+        bToA.setFlag(DiplomacyFlags.DefensivePact, 1)
+
+        aToB.nextTurn()
+
+        assertEquals(DiplomaticStatus.Peace, aToB.diplomaticStatus)
+        assertEquals(DiplomaticStatus.Peace, bToA.diplomaticStatus)
+        assertFalse(aToB.hasFlag(DiplomacyFlags.DefensivePact))
+        assertFalse(bToA.hasFlag(DiplomacyFlags.DefensivePact))
+        // The second civilization's turn must not resurrect the pact.
+        bToA.nextTurn()
+        assertEquals(DiplomaticStatus.Peace, aToB.diplomaticStatus)
+        assertEquals(DiplomaticStatus.Peace, bToA.diplomaticStatus)
+    }
+
+    @Test
+    fun `expired defensive pact must not turn an active war into peace`() {
+        meet(a, b)
+        val aToB = a.getDiplomacyManager(b)!!
+        val bToA = b.getDiplomacyManager(a)!!
+        aToB.diplomaticStatus = DiplomaticStatus.War
+        bToA.diplomaticStatus = DiplomaticStatus.War
+        aToB.setFlag(DiplomacyFlags.DefensivePact, 1)
+        bToA.setFlag(DiplomacyFlags.DefensivePact, 1)
+
+        aToB.nextTurn()
+
+        assertEquals(DiplomaticStatus.War, aToB.diplomaticStatus)
+        assertEquals(DiplomaticStatus.War, bToA.diplomaticStatus)
+        assertFalse(aToB.hasFlag(DiplomacyFlags.DefensivePact))
+        assertFalse(bToA.hasFlag(DiplomacyFlags.DefensivePact))
+    }
+
 }
