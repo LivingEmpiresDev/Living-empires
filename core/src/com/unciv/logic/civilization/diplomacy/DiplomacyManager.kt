@@ -235,6 +235,26 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /**
+     * Stage 5: a directional trust score derived from existing diplomatic history.
+     * No duplicate state is stored: betrayal and broken-promise modifiers already
+     * survive game saves and are consumed by the diplomatic opinion system.
+     */
+    @Readonly
+    fun trustScore(): Float {
+        val negativeHistory = listOf(
+            DiplomaticModifiers.BetrayedDeclarationOfFriendship,
+            DiplomaticModifiers.BetrayedDefensivePact,
+            DiplomaticModifiers.BetrayedPromiseToNotSettleCitiesNearUs,
+            DiplomaticModifiers.BetrayedPromiseToNotSpreadReligionToUs,
+            DiplomaticModifiers.BetrayedPromiseToNotSendingSpiesToUs,
+            DiplomaticModifiers.BetrayedPromiseToNotAttackUs,
+            DiplomaticModifiers.BetrayedPromiseToNotAttackOtherCiv,
+            DiplomaticModifiers.DeclaredWarOnUs
+        ).sumOf { minOf(0f, getModifier(it)).toDouble() }.toFloat()
+        return (50f + negativeHistory).coerceIn(0f, 100f)
+    }
+
     /** Stage 5: per-opponent war fatigue, persisted in saves and bounded to 0..100. */
     var warExhaustion = 0f
         private set
