@@ -158,12 +158,9 @@ class GameSerializationTests {
         val greece = game.getCivilization("Greece")
         val ours = rome.getDiplomacyManager(greece)!!
         val theirs = greece.getDiplomacyManager(rome)!!
-        ours.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy, 1f)
-        ours.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.ReceivedEmbassy, 1f)
-        ours.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies, 1f)
-        theirs.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy, 1f)
-        theirs.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.ReceivedEmbassy, 1f)
-        theirs.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies, 1f)
+        // Match the production state after both sides exchange embassy trade offers.
+        ours.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies, 3f)
+        theirs.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies, 3f)
         Assert.assertTrue(ours.appointAmbassador("Roman Envoy"))
         Assert.assertTrue(theirs.appointAmbassador("Greek Envoy"))
         ours.ambassadorMissionTurns = 3
