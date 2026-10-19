@@ -164,7 +164,10 @@ class DiplomacyManagerTests {
         diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
         assertFalse(diplomacy.startAmbassadorGoodwillMission())
         assertTrue(diplomacy.appointAmbassador("Envoy"))
+        a.addGold(50)
         assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        assertEquals(5f, b.getDiplomacyManager(a)!!.getModifier(DiplomaticModifiers.GaveUsGifts))
         assertFalse(diplomacy.startAmbassadorGoodwillMission())
         assertEquals(5, diplomacy.clone().ambassadorMissionTurns)
         with(DiplomacyTurnManager) { diplomacy.nextTurn() }
