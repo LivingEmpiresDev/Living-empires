@@ -435,6 +435,13 @@ object OjhBenchmark {
                 "SIM accepted AI peace treaty failed to protect both civilizations"
             }
             note("SIM scenario aiPeaceAcceptanceTreatyGuard=passed")
+            // Confirm accepting one bilateral peace proposal does not
+            // accidentally terminate unrelated wars from the same scenario.
+            check(aggressor.getCivsAtWarWith().isNotEmpty()) {
+                "SIM bilateral peace unexpectedly ended every multi-front war"
+            }
+            note("SIM scenario aiPeacePreservesOtherWars=passed")
+
 
 
 
