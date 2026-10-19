@@ -20,6 +20,7 @@ import com.unciv.ui.components.extensions.toLabel
 import com.unciv.ui.components.extensions.toTextButton
 import com.unciv.ui.components.fonts.Fonts
 import com.unciv.ui.components.input.onClick
+import com.unciv.ui.popups.AskTextPopup
 import com.unciv.ui.popups.ConfirmPopup
 import kotlin.math.roundToInt
 
@@ -82,6 +83,23 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                 "Embassy: No ambassador appointed"
             else "Ambassador: $representative"
             diplomacyTable.add(embassyLabel.toLabel(Color.LIGHT_GRAY)).row()
+
+            val appointButton = "Appoint Ambassador".toTextButton()
+            appointButton.onClick {
+                AskTextPopup(
+                    diplomacyScreen,
+                    label = "Ambassador name",
+                    defaultText = diplomacyManager.ambassadorName ?: "",
+                    maxLength = 60,
+                    validate = { it.trim().isNotEmpty() && it.trim().length <= 60 },
+                    actionOnOk = { name ->
+                        if (diplomacyManager.appointAmbassador(name))
+                            diplomacyScreen.updateRightSide(otherCiv)
+                    }
+                ).open()
+            }
+            if (diplomacyScreen.isNotPlayersTurn()) appointButton.disable()
+            diplomacyTable.add(appointButton).row()
         }
 
         val demandsButton = "Demands".toTextButton()
