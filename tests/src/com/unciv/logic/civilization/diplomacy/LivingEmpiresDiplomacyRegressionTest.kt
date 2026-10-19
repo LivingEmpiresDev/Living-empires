@@ -188,4 +188,25 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(4, original.ambassadorMissionTurns)
         assertEquals(9, original.diplomaticDemandCooldown)
     }
+
+    @Test fun stageSixGoodwillMissionRequiresAppointedAmbassador() {
+        val manager = DiplomacyManager()
+        // Eligibility checks must reject absent ambassadors before accessing game transients.
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        manager.ambassadorName = "Envoy"
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(0, manager.ambassadorMissionTurns)
+    }
+
+    @Test fun stageSixMissionProgressRemainsIndependentAfterClone() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorName = "Envoy"
+        original.ambassadorMissionTurns = 1
+        val copy = original.clone()
+        copy.ambassadorMissionTurns = 0
+        assertEquals(1, original.ambassadorMissionTurns)
+        assertEquals(0, copy.ambassadorMissionTurns)
+    }
 }
