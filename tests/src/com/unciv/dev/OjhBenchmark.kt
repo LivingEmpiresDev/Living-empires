@@ -253,7 +253,7 @@ object OjhBenchmark {
         // Run a controlled three-civilization war on a separate fresh game.
         // The primary benchmark game remains untouched.
         run {
-            val scenario = start(players.coerceAtLeast(3), size, mapPath, seed + 1)
+            val scenario = start(players.coerceAtLeast(3), size, mapPath, seed + 1, minimumCityStates = 1)
             // Let normal AI turns establish settlements before diplomacy tests.
             // AI peace automation requires both belligerents to own cities.
             for (setupTurn in 1..12) {
@@ -303,7 +303,8 @@ object OjhBenchmark {
             // defensive pacts. Exercise an actual initialized city-state and
             // verify that bilateral war and peace remain reciprocal.
             val cityState = scenario.civilizations.firstOrNull { it.isCityState }
-            if (cityState != null) {
+                ?: error("SIM city-state fixture missing: expected at least one city-state")
+            run {
                 defender.diplomacyFunctions.makeCivilizationsMeet(cityState)
                 val majorToMinor = defender.getDiplomacyManager(cityState)!!
                 val minorToMajor = cityState.getDiplomacyManager(defender)!!
@@ -322,8 +323,6 @@ object OjhBenchmark {
                 check(majorCopy.getDiplomacyManager(minorCopy)!!.diplomaticStatus ==
                     minorCopy.getDiplomacyManager(majorCopy)!!.diplomaticStatus)
                 note("SIM scenario cityStateBilateralWarPeace=passed")
-            } else {
-                note("SIM scenario cityStateBilateralWarPeace=not_exercised no_city_state")
             }
 
 
@@ -808,7 +807,7 @@ object OjhBenchmark {
      * Players asked for above the number of major civilizations become city
      * states, which is what the outside driver does too.
      */
-    private fun start(players: Int, size: String, mapPath: String?, seed: Long): GameInfo {
+    private fun start(players: Int, size: String, mapPath: String?, seed: Long, minimumCityStates: Int = 0): GameInfo {
         val setup = GameSetupInfo()
         val ruleset = RulesetCache[BaseRuleset.Civ_V_GnK.fullName]!!
 
@@ -818,7 +817,7 @@ object OjhBenchmark {
             if (!nation.isMajorCiv) continue
             chosen.add(Player(nation.name, PlayerType.AI))
         }
-        val cityStates = (players - chosen.size).coerceAtLeast(0)
+        val cityStates = (players - chosen.size).coerceAtLeast(minimumCityStates)
         chosen.add(Player(Constants.spectator, PlayerType.Human))
 
         setup.gameParameters.apply {
