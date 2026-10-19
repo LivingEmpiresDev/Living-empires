@@ -116,6 +116,20 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `AI embassy trust gate rejects betrayal and permits recovery`() {
+        meet(a, b)
+        val receivingCivDiplomacy = b.getDiplomacyManager(a)!!
+        // An embassy offer from A is evaluated using B's trust in A.
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(10f, receivingCivDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+
+        // Repairing the betrayal penalty removes the trust-specific rejection.
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, 0f)
+        assertEquals(50f, receivingCivDiplomacy.trustScore())
+    }
+
+    @Test
     fun `ambassador appointment requires an established embassy`() {
         meet(a, b)
         val diplomacy = a.getDiplomacyManager(b)!!
