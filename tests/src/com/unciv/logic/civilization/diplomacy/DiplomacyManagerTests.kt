@@ -273,6 +273,22 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `embassy closure clears ambassador and active goodwill mission`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        a.addGold(50)
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        diplomacy.diplomaticModifiers.remove(DiplomaticModifiers.EstablishedEmbassy.name)
+        with(DiplomacyTurnManager) { diplomacy.nextTurn() }
+        assertEquals(null, diplomacy.ambassadorName)
+        assertEquals(0, diplomacy.ambassadorMissionTurns)
+        assertFalse(diplomacy.demandDiplomaticTribute())
+        assertEquals(0, diplomacy.diplomaticDemandCooldown)
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
