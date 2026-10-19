@@ -427,6 +427,15 @@ object OjhBenchmark {
                 "SIM accepted AI peace proposal did not resolve bilateral war"
             }
             note("SIM scenario aiPeaceOfferAcceptance=passed")
+            val acceptedDefenderManager = defender.getDiplomacyManager(aggressor)!!
+            val acceptedAggressorManager = aggressor.getDiplomacyManager(defender)!!
+            check(acceptedDefenderManager.turnsToPeaceTreaty() > 0)
+            check(acceptedAggressorManager.turnsToPeaceTreaty() > 0)
+            check(!acceptedDefenderManager.canDeclareWar() && !acceptedAggressorManager.canDeclareWar()) {
+                "SIM accepted AI peace treaty failed to protect both civilizations"
+            }
+            note("SIM scenario aiPeaceAcceptanceTreatyGuard=passed")
+
 
 
 
