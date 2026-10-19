@@ -60,6 +60,13 @@ These are approved expansion features but **not represented as already implement
 - Continue implementing Stage 5 reputation, diplomatic missions and Android UI independently of the simulator, with targeted tests and ordinary CI for each change.
 - Do not merge Stage 5 to master until final branch-specific simulations, Android build, human gameplay acceptance and explicit approval pass.
 
+## Batch 2 verification checkpoint — 19 October 2026
+- Trust is directional and derives from persisted betrayal/war modifiers, with existing game-speed-adjusted per-turn decay; no second trust state or decay loop.
+- AI trust gates now cover embassy offers, defensive-pact acceptance, friendship and open borders. At trust below 20, AI refuses even if other opinion bonuses are high; other eligibility checks still apply above the threshold.
+- Regression tests cover trust boundaries, directional independence, decay, compounded war/treaty betrayal, and refusal cases. The latest branch-wide CI and permanent simulation must complete before declaring this batch verified.
+- Broader reputation effects on peace negotiation and war choices require separate design and scenario validation; do not mark them complete by inference from opinion modifiers.
+- Batch 3 should implement an ambassador mission as a complete gameplay slice (eligibility, cost, duration, AI, player UI, persistence, and tests) without replacing existing embassy/trade state.
+
 ## Streamlined Stage 5 execution plan — 19 October 2026
 Use **vertical feature batches** instead of one small commit per subtask:
 1. **Embassy gameplay batch:** ambassador lifecycle + AI appointment + player-facing embassy/ambassador view and controls + focused persistence/closure tests. Reuse the existing diplomacy UI and embassy rules; do not build a parallel subsystem.
