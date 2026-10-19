@@ -32,22 +32,20 @@ object DiplomacyTurnManager {
         }
         // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
         if (ambassadorMissionTurns > 0) {
+            val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo)
             if (ambassadorName.isNullOrBlank() ||
                 (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
                     !hasModifier(DiplomaticModifiers.SharedEmbassies)) ||
                 diplomaticStatus == DiplomaticStatus.War ||
-                // The receiving civilization must still have a reciprocal diplomacy record.
-                otherCiv.getDiplomacyManager(civInfo) == null ||
-                otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus == DiplomaticStatus.War)
+                recipientDiplomacy == null ||
+                recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War)
                 ambassadorMissionTurns = 0
             else {
                 ambassadorMissionTurns--
                 // The initial goodwill bonus is awarded when the mission starts.
                 // Only a mission that survives its full duration earns completion goodwill.
-                if (ambassadorMissionTurns == 0) {
-                    otherCiv.getDiplomacyManager(civInfo)
-                        ?.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
-                }
+                if (ambassadorMissionTurns == 0)
+                    recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
             }
         }
         nextTurnFlags()
