@@ -8,6 +8,8 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics
 import com.unciv.Constants
 import com.unciv.UncivGame
 import com.unciv.logic.GameInfo
+import com.unciv.logic.GameSimulationRunner
+import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
 import com.unciv.logic.GameStarter
 import com.unciv.logic.civilization.PlayerType
 import com.unciv.logic.civilization.diplomacy.DiplomacyFlags
@@ -117,8 +119,9 @@ object OjhBenchmark {
     fun main(args: Array<String>) {
         val mode = args.firstOrNull()
             ?: throw IllegalArgumentException("the first argument is the mode: turns or fps")
-        require(mode == "turns" || mode == "fps") { "unknown mode $mode" }
+        require(mode == "turns" || mode == "fps" || mode == "simulate") { "unknown mode $mode" }
         var turns = 100
+        var games = 1
         var seconds = 5.0
         var lateTurns = 20
         var players = 8
@@ -131,6 +134,7 @@ object OjhBenchmark {
             val value = { args.getOrNull(i + 1) ?: throw IllegalArgumentException("${args[i]} needs a value") }
             when (args[i]) {
                 "--turns" -> { turns = value().toInt(); i++ }
+                "--games" -> { games = value().toInt(); i++ }
                 "--players" -> { players = value().toInt(); i++ }
                 "--size" -> { size = value(); i++ }
                 "--map" -> { mapPath = value(); i++ }
@@ -142,6 +146,7 @@ object OjhBenchmark {
             i++
         }
         require(turns > 0) { "--turns must be at least 1" }
+        require(games in 1..100) { "--games must be between 1 and 100" }
         require(players >= 2) { "--players must be at least 2" }
 
         if (mode == "fps") {
@@ -166,6 +171,155 @@ object OjhBenchmark {
         val bootStart = System.nanoTime()
         val info = start(players, size, mapPath, seed)
         val bootSeconds = (System.nanoTime() - bootStart) / 1e9
+
+        if (mode == "simulate") {
+            var completed = 0
+            var totalWars = 0
+            var totalPacts = 0
+            var totalTrades = 0
+            for (index in 1..games) {
+                val simulation = if (index == 1) info else start(players, size, mapPath, seed + index - 1L)
+                // Sample bilateral diplomacy after every world turn, not only at the end.
+                // Use the normal AI engine for each step, and compare consecutive snapshots.
+                fun snapshot(): Map<String, String> {
+                    val majors = simulation.civilizations.filter { it.isMajorCiv() }
+                    return majors.flatMap { civ ->
+                        civ.diplomacy.values.filter { it.otherCiv.isMajorCiv() && civ.civID < it.otherCiv.civID }
+                            .map { dip ->
+                                val key = "${civ.civName}/${dip.otherCiv.civName}"
+                                val pact = dip.getFlag(DiplomacyFlags.DefensivePact)
+                                key to "status=${dip.diplomaticStatus} pactTurns=$pact napTurns=${dip.turnsToNonAggressionPact()} trades=${dip.trades.size}"
+                            }
+                    }.toMap()
+                }
+                // Deterministic defensive intervention regression using three real AI civilizations.
+                // A-B alliance: attack B, A must intervene. A's offensive war must not pull B in.
+                if (index == 1) {
+                    val trio = simulation.civilizations.filter { it.isMajorCiv() }.take(3)
+                    check(trio.size == 3) { "Defensive intervention test needs three major civilizations" }
+                    val defender = trio[0]
+                    val ally = trio[1]
+                    val attacker = trio[2]
+                    for (a in trio) for (b in trio) {
+                        if (a != b && !a.knows(b)) a.diplomacyFunctions.makeCivilizationsMeet(b, true)
+                    }
+                    defender.getDiplomacyManager(ally)!!.signDefensivePact(20)
+                    check(!ally.isAtWarWith(attacker))
+                    attacker.getDiplomacyManager(defender)!!.declareWar()
+                    check(defender.isAtWarWith(attacker)) { "Attacker did not enter war with defender" }
+                    check(ally.isAtWarWith(attacker)) { "Defensive ally failed to intervene when defender was attacked" }
+                    say("INTERVENTION_CHECK defensiveAllyJoined=true")
+                    // Independent fresh game: offensive declarations must not activate defensive allies.
+                    val offensiveGame = start(players, size, mapPath, seed + 100000L)
+                    val offensiveTrio = offensiveGame.civilizations.filter { it.isMajorCiv() }.take(3)
+                    check(offensiveTrio.size == 3)
+                    val aggressor = offensiveTrio[0]
+                    val passiveAlly = offensiveTrio[1]
+                    val target = offensiveTrio[2]
+                    for (a in offensiveTrio) for (b in offensiveTrio) {
+                        if (a != b && !a.knows(b)) a.diplomacyFunctions.makeCivilizationsMeet(b, true)
+                    }
+                    aggressor.getDiplomacyManager(passiveAlly)!!.signDefensivePact(20)
+                    check(!passiveAlly.isAtWarWith(target))
+                    aggressor.getDiplomacyManager(target)!!.declareWar()
+                    check(aggressor.isAtWarWith(target)) { "Offensive declaration did not start a war" }
+                    check(!passiveAlly.isAtWarWith(target)) { "Defensive ally incorrectly joined an offensive war" }
+                    say("OFFENSIVE_WAR_CHECK defensiveAllyStayedNeutral=true")
+                    // Exercise the production save-file serializer, not GameInfo.clone().
+                    val persistenceGame = start(players, size, mapPath, seed + 200000L)
+                    val pactMembers = persistenceGame.civilizations.filter { it.isMajorCiv() }.take(2)
+                    check(pactMembers.size == 2)
+                    val pactOwner = pactMembers[0]
+                    val pactPartner = pactMembers[1]
+                    if (!pactOwner.knows(pactPartner))
+                        pactOwner.diplomacyFunctions.makeCivilizationsMeet(pactPartner, true)
+                    pactOwner.getDiplomacyManager(pactPartner)!!.signDefensivePact(20)
+                    val originalRemaining = pactOwner.getDiplomacyManager(pactPartner)!!.getFlag(DiplomacyFlags.DefensivePact)
+                    check(originalRemaining == 20) { "Defensive pact should start at 20 turns, got $originalRemaining" }
+                    val saved = UncivFiles.gameInfoToString(persistenceGame, forceZip = false)
+                    val restored = UncivFiles.gameInfoFromString(saved)
+                    val loadedOwner = restored.civilizations.first { it.civID == pactOwner.civID }
+                    val loadedPartner = restored.civilizations.first { it.civID == pactPartner.civID }
+                    val restoredPact = loadedOwner.getDiplomacyManager(loadedPartner)!!
+                    val reversePact = loadedPartner.getDiplomacyManager(loadedOwner)!!
+                    check(restoredPact.getFlag(DiplomacyFlags.DefensivePact) == originalRemaining) {
+                        "Save/load lost defensive pact remaining turns"
+                    }
+                    check(reversePact.getFlag(DiplomacyFlags.DefensivePact) == originalRemaining) {
+                        "Save/load lost reciprocal defensive pact remaining turns"
+                    }
+                    check(restoredPact.diplomaticStatus.name == "DefensivePact" &&
+                        reversePact.diplomaticStatus.name == "DefensivePact") {
+                        "Save/load lost bilateral defensive pact status"
+                    }
+                    say("PACT_SAVE_LOAD_CHECK durationPreserved=true reciprocalStatusPreserved=true")
+
+
+                }
+                var previous = snapshot()
+                var pactDurationViolations = 0
+                var expiredPacts = 0
+                var brokenCountdowns = 0
+                var observedPacts = 0
+                var result = GameSimulationRunner.run(simulation, 1)
+                for (turn in 1..turns) {
+                    if (turn > 1) result = GameSimulationRunner.run(simulation, 1)
+                    val current = snapshot()
+                    (previous.keys + current.keys).sorted().forEach { pair ->
+                        val before = previous[pair]
+                        val after = current[pair]
+                        if (before != after) say("EVENT game=$index turn=${simulation.turns} pair=$pair before=${before ?: "unknown"} after=${after ?: "unknown"}")
+                        val pactTurns = Regex("pactTurns=(\\d+)").find(after ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                        if (pactTurns > 20) pactDurationViolations++
+                        val oldTurns = Regex("pactTurns=(\\d+)").find(before ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                        if (oldTurns == 0 && pactTurns > 0) observedPacts++
+                        if (oldTurns > 0 && pactTurns == 0) {
+                            expiredPacts++
+                            say("PACT_END game=$index turn=${simulation.turns} pair=$pair previous=$oldTurns state=${after ?: "unknown"}")
+                        }
+                        val pairCivs = simulation.civilizations.filter { it.isMajorCiv() && pair.split("/").contains(it.civName) }
+                        val bothAlive = pairCivs.size == 2 && pairCivs.all { !it.isDefeated() }
+                        if (!bothAlive && oldTurns > 0 && pactTurns == oldTurns) {
+                            say("PACT_FROZEN_DEFEATED game=$index turn=${simulation.turns} pair=$pair remaining=$pactTurns")
+                        }
+                        // A pact can be renewed during a civilization's turn. Its two directional
+                        // flags may then read 20 and 19 until the next world turn.
+                        val renewedThisTurn = pairCivs.size == 2 && pairCivs.any { civ ->
+                            val partner = pairCivs.first { it != civ }
+                            civ.getDiplomacyManager(partner)?.getFlag(DiplomacyFlags.DefensivePact) == 20
+                        }
+                        if (bothAlive && oldTurns > 0 && pactTurns > 0 && pactTurns != oldTurns - 1 && !renewedThisTurn) {
+                            brokenCountdowns++
+                            val sides = pairCivs.map { civ ->
+                                val partner = pairCivs.first { it != civ }
+                                val manager = civ.getDiplomacyManager(partner)
+                                "${civ.civName}:pact=${manager?.getFlag(DiplomacyFlags.DefensivePact)} status=${manager?.diplomaticStatus}"
+                            }
+                            say("PACT_COUNTDOWN_ERROR game=$index turn=${simulation.turns} pair=$pair before=$oldTurns after=$pactTurns sides=$sides beforeState=$before afterState=$after")
+                        }
+                    }
+                    previous = current
+                    if (simulation.turns >= turns) break
+                }
+                // The final one-turn result reports requestedTurns=1; aggregate the
+                // actual world turn progress for this full-game summary.
+                result = result.copy(startingTurn = 0, requestedTurns = turns, completed = simulation.turns >= turns)
+                say("SIMULATION game=$index start=${result.startingTurn} end=${result.endingTurn} requested=${result.requestedTurns} completed=${result.completed} wars=${result.activeWars} defensivePacts=${result.activeDefensivePacts} nonAggressionPacts=${result.activeNonAggressionPacts} trades=${result.activeTrades}")
+                result.civilizations.forEach { civ ->
+                    say("CIV game=$index name=${civ.name} alive=${civ.alive} cities=${civ.cities} won=${civ.won}")
+                }
+                check(pactDurationViolations == 0) { "Game $index found $pactDurationViolations pact durations exceeding 20 turns" }
+                check(brokenCountdowns == 0) { "Game $index found $brokenCountdowns invalid defensive pact countdown transitions" }
+                say("PACT_CHECK game=$index observed=$observedPacts ended=$expiredPacts countdownErrors=$brokenCountdowns durationViolations=$pactDurationViolations")
+                if (result.completed) completed++
+                totalWars += result.activeWars
+                totalPacts += result.activeDefensivePacts
+                totalTrades += result.activeTrades
+            }
+            say("SUMMARY games=$games completed=$completed warsAtEnd=$totalWars defensivePactsAtEnd=$totalPacts tradesAtEnd=$totalTrades")
+            System.out.flush()
+            exitProcess(if (completed == games) 0 else 1)
+        }
 
         say("OJH players ${info.civilizations.count { it.playerType == PlayerType.AI && !it.isBarbarian }}")
         say("OJH regions ${info.tileMap.values.size} tiles")
