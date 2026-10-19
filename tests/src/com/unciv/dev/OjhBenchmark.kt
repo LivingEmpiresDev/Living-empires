@@ -535,6 +535,30 @@ object OjhBenchmark {
             check(loadedAlly.isAtWarWith(loadedAggressor))
             note("SIM scenario aiPeaceSerializationRoundTrip=passed")
 
+            // Repeat the real persistence round-trip with compressed saves,
+            // which are commonly used for sharing and restoring games.
+            val compressedSave = UncivFiles.gameInfoToString(scenario, forceZip = true)
+            val loadedCompressed = UncivFiles.gameInfoFromString(compressedSave)
+            val zippedDefender = loadedCompressed.getCivilization(defender.civID)
+            val zippedAggressor = loadedCompressed.getCivilization(aggressor.civID)
+            val zippedAlly = loadedCompressed.getCivilization(ally.civID)
+            check(!zippedDefender.isAtWarWith(zippedAggressor))
+            check(!zippedAggressor.isAtWarWith(zippedDefender))
+            check(zippedDefender.getDiplomacyManager(zippedAggressor)!!.turnsToPeaceTreaty() > 0)
+            check(zippedAggressor.getDiplomacyManager(zippedDefender)!!.turnsToPeaceTreaty() > 0)
+            check(zippedDefender.getDiplomacyManager(zippedAlly)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            check(zippedAlly.isAtWarWith(zippedAggressor))
+            note("SIM scenario aiPeaceCompressedSaveRoundTrip=passed")
+
+            // The loaded state must be playable, not merely deserializable.
+            // One actual turn catches stale references and diplomacy updates
+            // that only fail after the next turn is processed.
+            loadedGame.nextTurn()
+            check(loadedGame.civilizations.any { it.isMajorCiv() && it.cities.isNotEmpty() })
+            note("SIM scenario aiPeaceLoadedGameNextTurn=passed")
+
+
 
 
 
