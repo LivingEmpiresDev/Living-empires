@@ -319,6 +319,8 @@ class DiplomacyManagerTests {
         ours.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
         theirs.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
         theirs.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+        ours.setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
+        theirs.setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
         assertTrue(ours.appointAmbassador("Our Envoy"))
         assertTrue(theirs.appointAmbassador("Their Envoy"))
         a.addGold(50)
