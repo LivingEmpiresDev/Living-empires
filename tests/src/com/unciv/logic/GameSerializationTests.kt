@@ -100,6 +100,32 @@ class GameSerializationTests {
     }
 
     @Test
+    fun ambassadorIdentitySurvivesUncompressedSaveAndLoad() {
+        val rome = game.getCivilization("Rome")
+        val greece = game.getCivilization("Greece")
+        val diplomacy = rome.getDiplomacyManager(greece)!!
+        diplomacy.setModifier(
+            com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy, 1f
+        )
+        Assert.assertTrue(diplomacy.appointAmbassador("Mira Solari"))
+
+        val saveFile = File.createTempFile("living-empires-ambassador-", ".json")
+        try {
+            UncivFiles.saveZipped = false
+            UncivGame.Current.files.saveGame(game, FileHandle(saveFile))
+            val loaded = UncivGame.Current.files.loadGameFromFile(FileHandle(saveFile))
+            val loadedDiplomacy = loaded.getCivilization("Rome")
+                .getDiplomacyManager(loaded.getCivilization("Greece"))!!
+            Assert.assertEquals("Mira Solari", loadedDiplomacy.ambassadorName)
+            Assert.assertTrue(loadedDiplomacy.hasModifier(
+                com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy
+            ))
+        } finally {
+            saveFile.delete()
+        }
+    }
+
+    @Test
     fun canSaveAndLoadUncompressedGame() {
         val saveFile = File.createTempFile("unciv-save-", ".json")
         try {
