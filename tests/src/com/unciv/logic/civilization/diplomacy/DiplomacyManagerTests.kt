@@ -311,6 +311,33 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `unilateral embassy withdrawal preserves foreign embassy and ambassador`() {
+        meet(a, b)
+        val ours = a.getDiplomacyManager(b)!!
+        val theirs = b.getDiplomacyManager(a)!!
+        ours.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        ours.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+        theirs.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        theirs.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+        assertTrue(ours.appointAmbassador("Our Envoy"))
+        assertTrue(theirs.appointAmbassador("Their Envoy"))
+        a.addGold(50)
+        assertTrue(ours.startAmbassadorGoodwillMission())
+
+        assertTrue(ours.withdrawEmbassy())
+        assertFalse(ours.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
+        assertFalse(ours.hasModifier(DiplomaticModifiers.SharedEmbassies))
+        assertTrue(ours.hasModifier(DiplomaticModifiers.ReceivedEmbassy))
+        assertTrue(theirs.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
+        assertFalse(theirs.hasModifier(DiplomaticModifiers.SharedEmbassies))
+        assertEquals("Their Envoy", theirs.ambassadorName)
+        assertEquals(null, ours.ambassadorName)
+        assertEquals(0, ours.ambassadorMissionTurns)
+        assertFalse(ours.withdrawEmbassy())
+        assertFalse(ours.demandDiplomaticTribute())
+    }
+
+    @Test
     fun `AI refuses friendship and open borders after severe betrayal`() {
         meet(a, b)
         val ourDiplomacy = a.getDiplomacyManager(b)!!
