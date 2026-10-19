@@ -37,6 +37,461 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `war exhaustion accumulates per turn and resets for a new war`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        val theirDiplomacy = b.getDiplomacyManager(a)!!
+        ourDiplomacy.diplomaticStatus = DiplomaticStatus.War
+        theirDiplomacy.diplomaticStatus = DiplomaticStatus.War
+
+        ourDiplomacy.advanceWarExhaustion()
+        assertTrue(ourDiplomacy.warExhaustion > 0f)
+        assertEquals(1, ourDiplomacy.turnsAtWar)
+        assertEquals(0f, theirDiplomacy.warExhaustion)
+
+        ourDiplomacy.resetWarExhaustionForNewWar()
+        assertEquals(0f, ourDiplomacy.warExhaustion)
+        assertEquals(0, ourDiplomacy.turnsAtWar)
+    }
+
+    @Test
+    fun `war exhaustion survives diplomacy cloning and cools after peace`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        repeat(3) { diplomacy.advanceWarExhaustion() }
+        val copy = diplomacy.clone()
+        assertEquals(diplomacy.warExhaustion, copy.warExhaustion)
+        assertEquals(diplomacy.turnsAtWar, copy.turnsAtWar)
+
+        diplomacy.diplomaticStatus = DiplomaticStatus.Peace
+        diplomacy.advanceWarExhaustion()
+        assertTrue(diplomacy.warExhaustion < copy.warExhaustion)
+        assertEquals(0, diplomacy.turnsAtWar)
+    }
+
+    @Test
+    fun `war exhaustion stays bounded through a prolonged war`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        repeat(1000) { diplomacy.advanceWarExhaustion() }
+
+        assertEquals(100f, diplomacy.warExhaustion)
+        assertEquals(1000, diplomacy.turnsAtWar)
+        assertEquals(20f, diplomacy.peaceMotivationThreshold())
+    }
+
+    @Test
+    fun `war exhaustion cools to zero and peace removes motivation penalty`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        repeat(20) { diplomacy.advanceWarExhaustion() }
+        diplomacy.diplomaticStatus = DiplomaticStatus.Peace
+        assertEquals(10f, diplomacy.peaceMotivationThreshold())
+        repeat(100) { diplomacy.advanceWarExhaustion() }
+        assertEquals(0f, diplomacy.warExhaustion)
+        assertEquals(0, diplomacy.turnsAtWar)
+    }
+
+    @Test
+    fun `trust reflects betrayal history and stays directional after cloning`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val incoming = b.getDiplomacyManager(a)!!
+        assertEquals(50f, outgoing.trustScore())
+        assertEquals(50f, incoming.trustScore())
+
+        outgoing.setModifier(DiplomaticModifiers.BetrayedDeclarationOfFriendship, -20f)
+        outgoing.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -15f)
+        assertEquals(15f, outgoing.trustScore())
+        assertEquals(50f, incoming.trustScore())
+        assertEquals(15f, outgoing.clone().trustScore())
+
+        outgoing.setModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs, -100f)
+        assertEquals(0f, outgoing.trustScore())
+        outgoing.setModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs, 0f)
+        assertEquals(15f, outgoing.trustScore())
+    }
+
+    @Test
+    fun `trust recovers naturally as diplomatic betrayal decays each turn`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        val theirDiplomacy = b.getDiplomacyManager(a)!!
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDeclarationOfFriendship, -20f)
+        assertEquals(30f, ourDiplomacy.trustScore())
+        assertEquals(50f, theirDiplomacy.trustScore())
+
+        with(DiplomacyTurnManager) { ourDiplomacy.nextTurn() }
+
+        assertTrue(ourDiplomacy.trustScore() > 30f)
+        assertTrue(ourDiplomacy.trustScore() < 50f)
+        assertEquals(50f, theirDiplomacy.trustScore())
+        assertEquals(ourDiplomacy.trustScore(), ourDiplomacy.clone().trustScore())
+    }
+
+    @Test
+    fun `war declaration and multiple betrayals reduce trust with bounded recovery`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        val theirDiplomacy = b.getDiplomacyManager(a)!!
+
+        ourDiplomacy.setModifier(DiplomaticModifiers.DeclaredWarOnUs, -20f)
+        assertEquals(30f, ourDiplomacy.trustScore())
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(0f, ourDiplomacy.trustScore())
+        assertEquals(50f, theirDiplomacy.trustScore())
+
+        // The existing diplomacy turn manager gradually forgets both offences.
+        repeat(10) { with(DiplomacyTurnManager) { ourDiplomacy.nextTurn() } }
+        assertTrue(ourDiplomacy.trustScore() >= 0f)
+        assertTrue(ourDiplomacy.trustScore() <= 50f)
+        assertEquals(50f, theirDiplomacy.trustScore())
+
+        // Removing the historical penalties restores baseline, never exceeding 100.
+        ourDiplomacy.setModifier(DiplomaticModifiers.DeclaredWarOnUs, 0f)
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, 0f)
+        assertEquals(50f, ourDiplomacy.trustScore())
+    }
+
+    @Test
+    fun `goodwill mission requires embassy and ambassador and advances through turns`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        a.addGold(50)
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        assertEquals(5f, b.getDiplomacyManager(a)!!.diplomaticModifiers[DiplomaticModifiers.GaveUsGifts.name])
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(5, diplomacy.clone().ambassadorMissionTurns)
+        with(DiplomacyTurnManager) { diplomacy.nextTurn() }
+        assertEquals(4, diplomacy.ambassadorMissionTurns)
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 0f)
+        diplomacy.diplomaticModifiers.remove(DiplomaticModifiers.EstablishedEmbassy.name)
+        with(DiplomacyTurnManager) { diplomacy.nextTurn() }
+        assertEquals(0, diplomacy.ambassadorMissionTurns)
+    }
+
+    @Test
+    fun `goodwill mission does not charge gold without sufficient funds or during war`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        a.addGold(49)
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(49, a.gold)
+        a.addGold(1)
+        diplomacy.diplomaticStatus = DiplomaticStatus.War
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(50, a.gold)
+        diplomacy.diplomaticStatus = DiplomaticStatus.Peace
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        assertFalse(diplomacy.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+    }
+
+    @Test
+    fun `goodwill mission recipient war state prevents charging and reward`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val receiving = b.getDiplomacyManager(a)!!
+        outgoing.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(outgoing.appointAmbassador("Envoy"))
+        a.addGold(50)
+        receiving.diplomaticStatus = DiplomaticStatus.War
+        assertFalse(outgoing.startAmbassadorGoodwillMission())
+        assertEquals(50, a.gold)
+        assertFalse(receiving.hasModifier(DiplomaticModifiers.GaveUsGifts))
+        receiving.diplomaticStatus = DiplomaticStatus.Peace
+        assertTrue(outgoing.startAmbassadorGoodwillMission())
+        assertEquals(0, a.gold)
+        assertTrue(receiving.hasModifier(DiplomaticModifiers.GaveUsGifts))
+    }
+
+    @Test
+    fun `diplomatic tribute refusal imposes cooldown without moving gold`() {
+        meet(a, b)
+        val sender = a.getDiplomacyManager(b)!!
+        val receiver = b.getDiplomacyManager(a)!!
+        sender.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(sender.appointAmbassador("Envoy"))
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(10, sender.diplomaticDemandCooldown)
+        assertEquals(10, sender.clone().diplomaticDemandCooldown)
+        assertEquals(0, a.gold)
+        assertEquals(0, b.gold)
+        assertTrue(receiver.hasModifier(DiplomaticModifiers.UnacceptableDemands))
+        assertFalse(sender.demandDiplomaticTribute())
+        with(DiplomacyTurnManager) { sender.nextTurn() }
+        assertEquals(9, sender.diplomaticDemandCooldown)
+    }
+
+    @Test
+    fun `diplomatic tribute cannot be demanded without ambassador or during war`() {
+        meet(a, b)
+        val sender = a.getDiplomacyManager(b)!!
+        val receiver = b.getDiplomacyManager(a)!!
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(0, sender.diplomaticDemandCooldown)
+        sender.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertFalse(sender.demandDiplomaticTribute())
+        assertTrue(sender.appointAmbassador("Envoy"))
+        receiver.diplomaticStatus = DiplomaticStatus.War
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(0, sender.diplomaticDemandCooldown)
+    }
+
+    @Test
+    fun `diplomatic tribute acceptance transfers gold once and expires after ten turns`() {
+        meet(a, b)
+        val sender = a.getDiplomacyManager(b)!!
+        val receiver = b.getDiplomacyManager(a)!!
+        sender.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(sender.appointAmbassador("Envoy"))
+        b.addGold(100)
+        receiver.setModifier(DiplomaticModifiers.YearsOfPeace, 200f)
+        assertTrue(sender.demandDiplomaticTribute())
+        assertEquals(25, a.gold)
+        assertEquals(75, b.gold)
+        assertEquals(10, sender.diplomaticDemandCooldown)
+        assertTrue(receiver.hasModifier(DiplomaticModifiers.UnacceptableDemands))
+        assertFalse(sender.demandDiplomaticTribute())
+        assertEquals(25, a.gold)
+        assertEquals(75, b.gold)
+        repeat(10) { with(DiplomacyTurnManager) { sender.nextTurn() } }
+        assertEquals(0, sender.diplomaticDemandCooldown)
+    }
+
+    @Test
+    fun `embassy closure clears ambassador and active goodwill mission`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        a.addGold(50)
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        diplomacy.diplomaticModifiers.remove(DiplomaticModifiers.EstablishedEmbassy.name)
+        with(DiplomacyTurnManager) { diplomacy.nextTurn() }
+        assertEquals(null, diplomacy.ambassadorName)
+        assertEquals(0, diplomacy.ambassadorMissionTurns)
+        assertFalse(diplomacy.demandDiplomaticTribute())
+        assertEquals(0, diplomacy.diplomaticDemandCooldown)
+    }
+
+    @Test
+    fun `ambassador mission and demand cooldown survive cloning and resume turns`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Envoy"))
+        a.addGold(50)
+        assertTrue(diplomacy.startAmbassadorGoodwillMission())
+        assertFalse(diplomacy.demandDiplomaticTribute())
+        val restored = diplomacy.clone()
+        assertEquals("Envoy", restored.ambassadorName)
+        assertEquals(5, restored.ambassadorMissionTurns)
+        assertEquals(10, restored.diplomaticDemandCooldown)
+        // Serialization clones require the same transient civilization binding as a loaded game.
+        restored.civInfo = a
+        with(DiplomacyTurnManager) { restored.nextTurn() }
+        assertEquals(4, restored.ambassadorMissionTurns)
+        assertEquals(9, restored.diplomaticDemandCooldown)
+        assertEquals(5, diplomacy.ambassadorMissionTurns)
+        assertEquals(10, diplomacy.diplomaticDemandCooldown)
+    }
+
+    @Test
+    fun `unilateral embassy withdrawal preserves foreign embassy and ambassador`() {
+        meet(a, b)
+        val ours = a.getDiplomacyManager(b)!!
+        val theirs = b.getDiplomacyManager(a)!!
+        // Real mutual embassy trades replace directional flags with SharedEmbassies.
+        ours.setModifier(DiplomaticModifiers.SharedEmbassies, 3f)
+        theirs.setModifier(DiplomaticModifiers.SharedEmbassies, 3f)
+        assertTrue(ours.appointAmbassador("Our Envoy"))
+        assertTrue(theirs.appointAmbassador("Their Envoy"))
+        a.addGold(50)
+        assertTrue(ours.startAmbassadorGoodwillMission())
+
+        assertTrue(ours.withdrawEmbassy())
+        assertFalse(ours.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
+        assertFalse(ours.hasModifier(DiplomaticModifiers.SharedEmbassies))
+        assertTrue(ours.hasModifier(DiplomaticModifiers.ReceivedEmbassy))
+        assertTrue(theirs.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
+        assertFalse(theirs.hasModifier(DiplomaticModifiers.SharedEmbassies))
+        assertEquals("Their Envoy", theirs.ambassadorName)
+        assertEquals(null, ours.ambassadorName)
+        assertEquals(0, ours.ambassadorMissionTurns)
+        assertFalse(ours.withdrawEmbassy())
+        assertFalse(ours.demandDiplomaticTribute())
+    }
+
+    @Test
+    fun `AI refuses friendship and open borders after severe betrayal`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(10f, ourDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDeclarationOfFrienship(a, b))
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToOpenBorders(a, b))
+        assertEquals(50f, b.getDiplomacyManager(a)!!.trustScore())
+    }
+
+    @Test
+    fun `AI defensive pact refuses severe betrayal regardless of positive opinion`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        // Strong positive diplomatic history cannot override a severe betrayal.
+        ourDiplomacy.setModifier(DiplomaticModifiers.YearsOfPeace, 200f)
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(10f, ourDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDefensivePact(a, b))
+
+        // Recovery above the threshold removes the trust-specific refusal.
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -30f)
+        assertEquals(20f, ourDiplomacy.trustScore())
+        assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDefensivePact(a, b))
+        assertEquals(50f, b.getDiplomacyManager(a)!!.trustScore())
+    }
+
+    @Test
+    fun `AI embassy trust gate rejects betrayal and permits recovery`() {
+        meet(a, b)
+        val receivingCivDiplomacy = b.getDiplomacyManager(a)!!
+        // An embassy offer from A is evaluated using B's trust in A.
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(10f, receivingCivDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+
+        // Repairing the betrayal penalty restores eligibility, and the AI must
+        // actually accept when no other diplomatic or strategic blocker exists.
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, 0f)
+        assertEquals(50f, receivingCivDiplomacy.trustScore())
+        testGame.addCity(a, testGame.getTile(HexCoord.Zero))
+        testGame.addCity(b, testGame.getTile(2, 0))
+        assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+
+        // The exact threshold is inclusive: 20 is allowed, 19 is refused.
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -30f)
+        assertEquals(20f, receivingCivDiplomacy.trustScore())
+        assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+        receivingCivDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -31f)
+        assertEquals(19f, receivingCivDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToAcceptEmbassy(a, b))
+
+        // The receiver's distrust must not change the reverse relationship.
+        assertEquals(50f, a.getDiplomacyManager(b)!!.trustScore())
+    }
+
+    @Test
+    fun `ambassador appointment requires an established embassy`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        assertTrue(!diplomacy.appointAmbassador("Ada"))
+        assertEquals(null, diplomacy.ambassadorName)
+
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Ada"))
+        assertEquals("Ada", diplomacy.ambassadorName)
+        assertTrue(!diplomacy.appointAmbassador("  "))
+        assertEquals("Ada", diplomacy.ambassadorName)
+    }
+
+    @Test
+    fun `ambassador assignment survives cloning and clears on embassy closure`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Amara"))
+        assertEquals("Amara", diplomacy.clone().ambassadorName)
+
+        a.diplomacyFunctions.removeEmbassies(b)
+        assertEquals(null, diplomacy.ambassadorName)
+        assertEquals(null, b.getDiplomacyManager(a)!!.ambassadorName)
+    }
+
+    @Test
+    fun `AI embassy appointment never creates an embassy or replaces a named envoy`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        // No embassy means no representative can be assigned.
+        assertTrue(!diplomacy.appointAmbassador("Envoy"))
+        assertEquals(null, diplomacy.ambassadorName)
+
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        assertTrue(diplomacy.appointAmbassador("Existing Envoy"))
+        // A later automated appointment must not overwrite a player-defined or existing name.
+        assertEquals("Existing Envoy", diplomacy.ambassadorName)
+    }
+
+    @Test
+    fun `ambassador names are validated and appointments remain directional`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val incoming = b.getDiplomacyManager(a)!!
+        outgoing.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+        incoming.setModifier(DiplomaticModifiers.SharedEmbassies, 1f)
+
+        assertTrue(!outgoing.appointAmbassador("x".repeat(61)))
+        assertEquals(null, outgoing.ambassadorName)
+        assertTrue(outgoing.appointAmbassador("  Mira  "))
+        assertEquals("Mira", outgoing.ambassadorName)
+        assertEquals(null, incoming.ambassadorName)
+
+        assertTrue(incoming.appointAmbassador("Niko"))
+        assertEquals("Mira", outgoing.ambassadorName)
+        assertEquals("Niko", incoming.ambassadorName)
+    }
+
+    @Test
+    fun `ambassador replacement preserves outgoing diplomatic identity`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val incoming = b.getDiplomacyManager(a)!!
+        outgoing.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        incoming.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+
+        assertTrue(outgoing.appointAmbassador("Amara Vale"))
+        assertTrue(incoming.appointAmbassador("Niko Renn"))
+        assertTrue(outgoing.appointAmbassador("Mira Solari"))
+        assertEquals("Mira Solari", outgoing.ambassadorName)
+        assertEquals("Niko Renn", incoming.ambassadorName)
+
+        // Removing embassies is a bilateral diplomatic event, not just a UI reset.
+        a.diplomacyFunctions.removeEmbassies(b)
+        assertEquals(null, outgoing.ambassadorName)
+        assertEquals(null, incoming.ambassadorName)
+        assertFalse(outgoing.appointAmbassador("Amara Vale"))
+        assertFalse(incoming.appointAmbassador("Niko Renn"))
+    }
+
+    @Test
+    fun `AI ambassador assignment requires an embassy and keeps stable identity`() {
+        meet(a, b)
+        val diplomacy = a.getDiplomacyManager(b)!!
+        com.unciv.logic.automation.civilization.DiplomacyAutomation.appointEmbassyRepresentatives(a)
+        assertEquals(null, diplomacy.ambassadorName)
+
+        diplomacy.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
+        com.unciv.logic.automation.civilization.DiplomacyAutomation.appointEmbassyRepresentatives(a)
+        val assignedName = diplomacy.ambassadorName
+        assertTrue(assignedName != null && assignedName.contains(" "))
+        assertFalse(assignedName!!.contains("$" + "{"))
+        com.unciv.logic.automation.civilization.DiplomacyAutomation.appointEmbassyRepresentatives(a)
+        assertEquals(assignedName, diplomacy.ambassadorName)
+    }
+
+    @Test
     fun `getCommonKnownCivs does not include either DiplomacyManagers's civs`() {
         meet(a, b)
         val commonKnownCivs = a.getDiplomacyManager(b)!!.getCommonKnownCivs()
@@ -423,7 +878,6 @@ class DiplomacyManagerTests {
         // max(max(-60, 93, -20), 19) + 105 = 93 + 105 = 198
         assertEquals(198f, cityState.getDiplomacyManager(liberator)!!.getInfluence(), 0.01f)
     }
-
 
     @Test
     fun `defensive pact expiration synchronizes both civilizations on the first turn`() {

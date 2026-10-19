@@ -100,6 +100,96 @@ class GameSerializationTests {
     }
 
     @Test
+    fun ambassadorIdentitySurvivesUncompressedSaveAndLoad() {
+        val rome = game.getCivilization("Rome")
+        val greece = game.getCivilization("Greece")
+        val diplomacy = rome.getDiplomacyManager(greece)!!
+        diplomacy.setModifier(
+            com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy, 1f
+        )
+        Assert.assertTrue(diplomacy.appointAmbassador("Mira Solari"))
+
+        val saveFile = File.createTempFile("living-empires-ambassador-", ".json")
+        try {
+            UncivFiles.saveZipped = false
+            UncivGame.Current.files.saveGame(game, FileHandle(saveFile))
+            val loaded = UncivGame.Current.files.loadGameFromFile(FileHandle(saveFile))
+            val loadedDiplomacy = loaded.getCivilization("Rome")
+                .getDiplomacyManager(loaded.getCivilization("Greece"))!!
+            Assert.assertEquals("Mira Solari", loadedDiplomacy.ambassadorName)
+            Assert.assertTrue(loadedDiplomacy.hasModifier(
+                com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy
+            ))
+        } finally {
+            saveFile.delete()
+        }
+    }
+
+    @Test
+    fun embassyMissionAndDemandCooldownSurviveCompressedSaveAndLoad() {
+        val rome = game.getCivilization("Rome")
+        val greece = game.getCivilization("Greece")
+        val diplomacy = rome.getDiplomacyManager(greece)!!
+        diplomacy.setModifier(
+            com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy, 1f
+        )
+        Assert.assertTrue(diplomacy.appointAmbassador("Mira Solari"))
+        diplomacy.ambassadorMissionTurns = 4
+        diplomacy.diplomaticDemandCooldown = 9
+
+        val saveFile = File.createTempFile("living-empires-diplomacy-", ".json")
+        try {
+            UncivFiles.saveZipped = true
+            UncivGame.Current.files.saveGame(game, FileHandle(saveFile))
+            val loaded = UncivGame.Current.files.loadGameFromFile(FileHandle(saveFile))
+            val restored = loaded.getCivilization("Rome")
+                .getDiplomacyManager(loaded.getCivilization("Greece"))!!
+            Assert.assertEquals("Mira Solari", restored.ambassadorName)
+            Assert.assertEquals(4, restored.ambassadorMissionTurns)
+            Assert.assertEquals(9, restored.diplomaticDemandCooldown)
+        } finally {
+            saveFile.delete()
+        }
+    }
+
+    @Test
+    fun unilateralEmbassyWithdrawalSurvivesCompressedSaveAndLoad() {
+        val rome = game.getCivilization("Rome")
+        val greece = game.getCivilization("Greece")
+        val ours = rome.getDiplomacyManager(greece)!!
+        val theirs = greece.getDiplomacyManager(rome)!!
+        // Match the production state after both sides exchange embassy trade offers.
+        ours.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies, 3f)
+        theirs.setModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies, 3f)
+        Assert.assertTrue(ours.appointAmbassador("Roman Envoy"))
+        Assert.assertTrue(theirs.appointAmbassador("Greek Envoy"))
+        ours.ambassadorMissionTurns = 3
+        Assert.assertTrue(ours.withdrawEmbassy())
+
+        val saveFile = File.createTempFile("living-empires-withdrawal-", ".json")
+        try {
+            UncivFiles.saveZipped = true
+            UncivGame.Current.files.saveGame(game, FileHandle(saveFile))
+            val loaded = UncivGame.Current.files.loadGameFromFile(FileHandle(saveFile))
+            val loadedRome = loaded.getCivilization("Rome")
+            val loadedGreece = loaded.getCivilization("Greece")
+            val restoredOurs = loadedRome.getDiplomacyManager(loadedGreece)!!
+            val restoredTheirs = loadedGreece.getDiplomacyManager(loadedRome)!!
+            Assert.assertFalse(restoredOurs.hasModifier(
+                com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy))
+            Assert.assertTrue(restoredOurs.hasModifier(
+                com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.ReceivedEmbassy))
+            Assert.assertTrue(restoredTheirs.hasModifier(
+                com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy))
+            Assert.assertEquals(null, restoredOurs.ambassadorName)
+            Assert.assertEquals(0, restoredOurs.ambassadorMissionTurns)
+            Assert.assertEquals("Greek Envoy", restoredTheirs.ambassadorName)
+        } finally {
+            saveFile.delete()
+        }
+    }
+
+    @Test
     fun canSaveAndLoadUncompressedGame() {
         val saveFile = File.createTempFile("unciv-save-", ".json")
         try {

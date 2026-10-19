@@ -51,9 +51,11 @@ object DiplomacyAutomation {
     }
     
     @Readonly
-    internal fun wantsToSignDeclarationOfFrienship(civInfo: Civilization, otherCiv: Civilization): Boolean {
+    fun wantsToSignDeclarationOfFrienship(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val diploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (diploManager.hasFlag(DiplomacyFlags.DeclinedDeclarationOfFriendship)) return false
+        // A severe betrayal rules out a new friendship even if unrelated bonuses lift opinion.
+        if (diploManager.trustScore() < 20f) return false
         // Shortcut, if it is below favorable then don't consider it
         if (diploManager.isRelationshipLevelLT(RelationshipLevel.Favorable)) return false
 
@@ -124,7 +126,42 @@ object DiplomacyAutomation {
      * 
      * @param civInfo Civilization which initiates trade
      */
+    /** Assign an AI representative only after an embassy actually exists.
+     * Keep existing player-controlled assignments untouched. */
+    fun appointEmbassyRepresentatives(civInfo: Civilization) {
+        if (!civInfo.isMajorCiv() || civInfo.isHuman()) return
+        for (otherCiv in civInfo.getKnownCivs()) {
+            if (!otherCiv.isMajorCiv()) continue
+            val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
+            if (diplomacy.ambassadorName != null) continue
+            val firstNames = listOf("Amara", "Darius", "Mira", "Niko", "Sana", "Tarek", "Leona", "Ilya")
+            val familyNames = listOf("Vale", "Arden", "Solari", "Maren", "Renn", "Kade", "Voss", "Sorin")
+            val seed = (civInfo.civID + ":" + otherCiv.civID).hashCode().toLong()
+            val first = firstNames[(seed and 0x7fffffffL).rem(firstNames.size).toInt()]
+            val family = familyNames[((seed ushr 8) and 0x7fffffffL).rem(familyNames.size).toInt()]
+            diplomacy.appointAmbassador(first + " " + family)
+        }
+    }
+
+    /** AI diplomatic missions use the same cost, eligibility and cooldown as player missions. */
+    fun launchAmbassadorGoodwillMissions(civInfo: Civilization) {
+        if (!civInfo.isMajorCiv() || civInfo.isHuman()) return
+        if (civInfo.gold < 150) return // Keep reserves for normal AI priorities.
+        for (otherCiv in civInfo.getKnownCivs()) {
+            if (!otherCiv.isMajorCiv() || !otherCiv.isAlive()) continue
+            val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
+            if (diplomacy.ambassadorName.isNullOrBlank() || diplomacy.ambassadorMissionTurns > 0) continue
+            if (diplomacy.trustScore() < 20f || diplomacy.diplomaticStatus == DiplomaticStatus.War) continue
+            if ((otherCiv.getDiplomacyManager(civInfo)?.trustScore() ?: 0f) < 20f) continue
+            val rng = diplomacy.state.stateBasedRandom("DiplomacyAutomation.ambassadorGoodwillMission")
+            if ((1..10).random(rng) <= 8) continue
+            diplomacy.startAmbassadorGoodwillMission()
+        }
+    }
+
     internal fun offerToEstablishEmbassy(civInfo: Civilization) {
+        appointEmbassyRepresentatives(civInfo)
+        launchAmbassadorGoodwillMissions(civInfo)
         if (civInfo.getCapital() == null) return
         val civsThatWeCanEstablishEmbassyWith = civInfo.getKnownCivs().filter {
             civInfo.diplomacyFunctions.canEstablishEmbassyWith(it)
@@ -205,6 +242,8 @@ object DiplomacyAutomation {
         val theirDiploManager = otherCiv.getDiplomacyManager(civInfo)!!
         if (civInfo.getDiplomacyManager(otherCiv)!!.hasFlag(DiplomacyFlags.DeclinedEmbassy)) return false
         if (theirDiploManager.isRelationshipLevelLT(RelationshipLevel.Afraid)) return false
+        // Stage 5: repeated betrayal makes the AI unwilling to host a foreign embassy.
+        if (theirDiploManager.trustScore() < 20f) return false
 
         // Being able to see their capital can give us an advantage later on, especially with espionage enabled
         if (!civInfo.getCapital()!!.getCenterTile().isExplored(otherCiv)) return true
@@ -229,6 +268,8 @@ object DiplomacyAutomation {
     fun wantsToOpenBorders(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val ourDiploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (ourDiploManager.hasFlag(DiplomacyFlags.DeclinedOpenBorders)) return false
+        // Do not grant strategic access to a civilization we deeply distrust.
+        if (ourDiploManager.trustScore() < 20f) return false
         if (ourDiploManager.isRelationshipLevelLT(RelationshipLevel.Favorable)) return false
         // Don't accept if they are at war with our friends, they might use our land to attack them
         if (civInfo.diplomacy.values.any { it.isRelationshipLevelGE(RelationshipLevel.Friend) && it.otherCiv.isAtWarWith(otherCiv) })
@@ -300,6 +341,9 @@ object DiplomacyAutomation {
     fun wantsToSignDefensivePact(civInfo: Civilization, otherCiv: Civilization): Boolean {
         val ourDiploManager = civInfo.getDiplomacyManager(otherCiv)!!
         if (ourDiploManager.hasFlag(DiplomacyFlags.DeclinedDefensivePact)) return false
+        // Severe historical betrayal blocks a defensive alliance even when
+        // positive modifiers temporarily raise the overall diplomatic opinion.
+        if (ourDiploManager.trustScore() < 20f) return false
         if (ourDiploManager.opinionOfOtherCiv() < 65f * civInfo.getPersonality().inverseScaledFocus(PersonalityValue.Aggressive)) return false
         val commonknownCivs = ourDiploManager.getCommonKnownCivs()
 
@@ -411,7 +455,10 @@ object DiplomacyAutomation {
                     if (start < 0) 0 else (civInfo.gameInfo.turns - start).coerceAtLeast(0)
                 }
             )
-            if (pressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, 10f) >= 10) {
+            val exhaustion = civInfo.getDiplomacyManager(enemy)!!.warExhaustion.coerceIn(0f, 100f)
+            val effectivePressure = pressure + (exhaustion / 5f).toInt()
+            val peaceThreshold = civInfo.getDiplomacyManager(enemy)!!.peaceMotivationThreshold()
+            if (effectivePressure < 20 && hasAtLeastMotivationToAttack(civInfo, enemy, peaceThreshold) >= peaceThreshold) {
                 // We can still fight. Refuse peace.
                 continue
             }

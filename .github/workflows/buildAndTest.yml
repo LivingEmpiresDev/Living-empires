@@ -4,9 +4,16 @@ name: Build and test
 on:
   # Triggers the workflow on any push or pull request
   push:
+    branches:
+      - master
   workflow_dispatch:
   # Validate the actual proposed branch changes on pull requests.
   pull_request:
+
+# Superseded commits should not hold CI runners while newer code waits.
+concurrency:
+  group: build-and-test-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

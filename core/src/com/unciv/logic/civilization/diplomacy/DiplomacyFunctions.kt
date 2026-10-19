@@ -148,11 +148,13 @@ class DiplomacyFunctions(val civInfo: Civilization) {
         ourDiploManager.removeModifier(DiplomaticModifiers.EstablishedEmbassy)
         ourDiploManager.removeModifier(DiplomaticModifiers.ReceivedEmbassy)
         ourDiploManager.removeModifier(DiplomaticModifiers.SharedEmbassies)
+        ourDiploManager.ambassadorName = null
 
         val theirDiploManager = ourDiploManager.otherCivDiplomacy()
         theirDiploManager.removeModifier(DiplomaticModifiers.EstablishedEmbassy)
         theirDiploManager.removeModifier(DiplomaticModifiers.ReceivedEmbassy)
         theirDiploManager.removeModifier(DiplomaticModifiers.SharedEmbassies)
+        theirDiploManager.ambassadorName = null
     }
 
     @Readonly

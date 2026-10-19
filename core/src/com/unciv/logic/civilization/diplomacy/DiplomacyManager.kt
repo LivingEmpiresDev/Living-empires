@@ -221,6 +221,146 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * As for why it's String and not DiplomaticModifier see FlagsCountdown comment */
     var diplomaticModifiers = HashMap<String, Float>()
 
+    /** Stage 5: name of our appointed representative in the other civilization's capital.
+     * Null means no representative is assigned. Stored on our directional diplomacy record. */
+    var ambassadorName: String? = null
+
+    /** Appoint only when our embassy is established using the existing diplomacy rules. */
+    fun appointAmbassador(name: String): Boolean {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > 60) return false
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        ambassadorName = trimmed
+        return true
+    }
+
+    /**
+     * Withdraw only our embassy. Preserve the other civilization's independent embassy
+     * and representative, while updating the bilateral embassy modifiers consistently.
+     */
+    fun withdrawEmbassy(): Boolean {
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        val counterpart = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        // Mutual embassy trades collapse both directional flags into SharedEmbassies.
+        // Restore the foreign embassy explicitly before clearing the shared state.
+        val foreignEmbassyExists = counterpart.hasModifier(DiplomaticModifiers.EstablishedEmbassy) ||
+            counterpart.hasModifier(DiplomaticModifiers.SharedEmbassies)
+        removeModifier(DiplomaticModifiers.EstablishedEmbassy)
+        removeModifier(DiplomaticModifiers.SharedEmbassies)
+        counterpart.removeModifier(DiplomaticModifiers.ReceivedEmbassy)
+        counterpart.removeModifier(DiplomaticModifiers.SharedEmbassies)
+        if (foreignEmbassyExists) {
+            counterpart.setModifier(DiplomaticModifiers.EstablishedEmbassy, 2f)
+            setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
+        } else {
+            removeModifier(DiplomaticModifiers.ReceivedEmbassy)
+        }
+        ambassadorName = null
+        ambassadorMissionTurns = 0
+        return true
+    }
+
+    /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
+    var ambassadorMissionTurns = 0
+
+    /**
+     * Start a time-limited diplomatic goodwill mission from an established embassy.
+     * Mission effects and resource costs will be integrated with AI and player actions.
+     */
+    fun startAmbassadorGoodwillMission(): Boolean {
+        if (ambassadorMissionTurns > 0 || ambassadorName.isNullOrBlank()) return false
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        if (diplomaticStatus == DiplomaticStatus.War) return false
+        val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        if (recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War) return false
+        if (civInfo.gold < 50) return false
+        civInfo.addGold(-50)
+        // Reward the receiver's opinion of the sender, without overwriting existing gifts.
+        recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 5f)
+        ambassadorMissionTurns = 5
+        return true
+    }
+
+    /** Turns until another diplomatic demand may be sent to this civilization. */
+    var diplomaticDemandCooldown = 0
+
+    /**
+     * Demand a one-time tribute of 25 gold. Refusal damages relations and still
+     * triggers a cooldown to prevent repeated demands within the same turn.
+     */
+    fun demandDiplomaticTribute(): Boolean {
+        if (diplomaticDemandCooldown > 0 || diplomaticStatus == DiplomaticStatus.War) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
+        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
+            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
+        if (ambassadorName.isNullOrBlank()) return false
+        val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        if (receiver.diplomaticStatus == DiplomaticStatus.War) return false
+        diplomaticDemandCooldown = 10
+        if (otherCiv.gold < 25 || receiver.trustScore() < 20f ||
+            receiver.opinionOfOtherCiv() < 30f) {
+            receiver.addModifier(DiplomaticModifiers.UnacceptableDemands, -5f)
+            return false
+        }
+        otherCiv.addGold(-25)
+        civInfo.addGold(25)
+        receiver.addModifier(DiplomaticModifiers.UnacceptableDemands, -3f)
+        return true
+    }
+
+    /**
+     * Stage 5: a directional trust score derived from existing diplomatic history.
+     * No duplicate state is stored: betrayal and broken-promise modifiers already
+     * survive game saves and are consumed by the diplomatic opinion system.
+     */
+    @Readonly
+    fun trustScore(): Float {
+        val negativeHistory = listOf(
+            DiplomaticModifiers.BetrayedDeclarationOfFriendship,
+            DiplomaticModifiers.BetrayedDefensivePact,
+            DiplomaticModifiers.BetrayedPromiseToNotSettleCitiesNearUs,
+            DiplomaticModifiers.BetrayedPromiseToNotSpreadReligionToUs,
+            DiplomaticModifiers.BetrayedPromiseToNotSendingSpiesToUs,
+            DiplomaticModifiers.BetrayedPromiseToNotAttackUs,
+            DiplomaticModifiers.BetrayedPromiseToNotAttackOtherCiv,
+            DiplomaticModifiers.DeclaredWarOnUs
+        ).sumOf { minOf(0f, getModifier(it)).toDouble() }.toFloat()
+        return (50f + negativeHistory).coerceIn(0f, 100f)
+    }
+
+    /** Stage 5: per-opponent war fatigue, persisted in saves and bounded to 0..100. */
+    var warExhaustion = 0f
+        private set
+
+    /** Number of turns spent in the current war with this opponent. */
+    var turnsAtWar = 0
+        private set
+
+    /** War fatigue increases the military motivation required to reject a peace offer. */
+    @Readonly fun peaceMotivationThreshold(): Float =
+        10f + if (diplomaticStatus == DiplomaticStatus.War) warExhaustion.coerceIn(0f, 100f) / 10f else 0f
+
+    /** Called independently for each side on its civilization turn. */
+    fun advanceWarExhaustion() {
+        val speed = civInfo.gameInfo.speed.modifier.coerceAtLeast(0.01f)
+        if (diplomaticStatus == DiplomaticStatus.War && civInfo.isMajorCiv() && otherCiv.isMajorCiv()) {
+            turnsAtWar = (turnsAtWar + 1).coerceAtMost(10000)
+            warExhaustion = (warExhaustion + 1f / speed).coerceAtMost(100f)
+        } else {
+            turnsAtWar = 0
+            warExhaustion = (warExhaustion - 2f / speed).coerceAtLeast(0f)
+        }
+    }
+
+    /** A new war starts a fresh fatigue counter; any peace-time fatigue has no immediate effect. */
+    fun resetWarExhaustionForNewWar() {
+        turnsAtWar = 0
+        warExhaustion = 0f
+    }
+
     /** For city-states. Influence is saved in the CITY STATE -> major civ Diplomacy, NOT in the major civ -> city state diplomacy.
      * Access via getInfluence() and setInfluence() unless you know what you're doing.
      * Note that not using the setter skips recalculating the ally and bounds checks,
@@ -274,6 +414,11 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.influence = influence
         toReturn.flagsCountdown.putAll(flagsCountdown)
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
+        toReturn.ambassadorName = ambassadorName
+        toReturn.ambassadorMissionTurns = ambassadorMissionTurns
+        toReturn.diplomaticDemandCooldown = diplomaticDemandCooldown
+        toReturn.warExhaustion = warExhaustion
+        toReturn.turnsAtWar = turnsAtWar
         toReturn.totalOfScienceDuringRA = totalOfScienceDuringRA
         toReturn.smoothedOpinionOfOtherCiv = smoothedOpinionOfOtherCiv
         toReturn.cachedSmoothedOpinionOfOtherCiv = cachedSmoothedOpinionOfOtherCiv
@@ -617,6 +762,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     /** Should only be called from makePeace */
     private fun makePeaceOneSide() {
         diplomaticStatus = DiplomaticStatus.Peace
+        turnsAtWar = 0
         warStartedOnTurn = -1
         val otherCiv = otherCiv
         // Get out of others' territory
