@@ -199,6 +199,17 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(0, manager.ambassadorMissionTurns)
     }
 
+    @Test fun stageSixEmbassyWithdrawalCancelsMissionWithoutAffectingOtherMissionState() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 3
+        manager.diplomaticDemandCooldown = 7
+        // A mission without an embassy cannot be started, even with a named envoy.
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(3, manager.ambassadorMissionTurns)
+        assertEquals(7, manager.diplomaticDemandCooldown)
+    }
+
     @Test fun stageSixMissionProgressRemainsIndependentAfterClone() {
         val original = DiplomacyManager()
         DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
