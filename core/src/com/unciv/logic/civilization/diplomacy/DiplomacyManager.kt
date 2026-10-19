@@ -299,6 +299,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         if (ambassadorName.isNullOrBlank()) return false
         val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
         if (receiver.diplomaticStatus == DiplomaticStatus.War) return false
+        // A tribute demand requires a living counterpart; avoid consuming cooldown on a dead civilization.
+        if (!otherCiv.isAlive()) return false
         diplomaticDemandCooldown = 10
         if (otherCiv.gold < 25 || receiver.trustScore() < 20f ||
             receiver.opinionOfOtherCiv() < 30f) {
