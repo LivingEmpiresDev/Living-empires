@@ -558,6 +558,31 @@ object OjhBenchmark {
             check(loadedGame.civilizations.any { it.isMajorCiv() && it.cities.isNotEmpty() })
             note("SIM scenario aiPeaceLoadedGameNextTurn=passed")
 
+            // Invoke the production counteroffer generator on the actual
+            // AI-generated peace request. A counteroffer may legitimately be
+            // unavailable; when present it must retain reciprocal peace terms
+            // and must not create an unlimited city demand.
+            val tradeAutomation = com.unciv.logic.automation.civilization.TradeAutomation
+            val counterMethod = tradeAutomation.javaClass.declaredMethods.first {
+                it.name.startsWith("getCounteroffer") &&
+                    it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == com.unciv.logic.civilization.Civilization::class.java
+            }
+            counterMethod.isAccessible = true
+            val counter = counterMethod.invoke(tradeAutomation, defender, actualOffer)
+                as? com.unciv.logic.trade.TradeRequest
+            if (counter != null) {
+                check(counter.requestingCiv == defender.civID)
+                check(counter.trade.isPeaceTreaty())
+                check(counter.trade.ourOffers.any { it.name == Constants.peaceTreaty })
+                check(counter.trade.theirOffers.any { it.name == Constants.peaceTreaty })
+                check((counter.trade.ourOffers + counter.trade.theirOffers).count {
+                    it.type == com.unciv.logic.trade.TradeOfferType.City
+                } <= 1)
+            }
+            note("SIM scenario aiPeaceCounterofferSafeguards=passed generated=${counter != null}")
+
+
 
 
 
