@@ -35,7 +35,8 @@ object DiplomacyTurnManager {
             if (ambassadorName.isNullOrBlank() ||
                 (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
                     !hasModifier(DiplomaticModifiers.SharedEmbassies)) ||
-                diplomaticStatus == DiplomaticStatus.War)
+                diplomaticStatus == DiplomaticStatus.War ||
+                otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus == DiplomaticStatus.War)
                 ambassadorMissionTurns = 0
             else {
                 ambassadorMissionTurns--
