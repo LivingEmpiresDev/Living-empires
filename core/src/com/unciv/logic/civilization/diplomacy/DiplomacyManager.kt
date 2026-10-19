@@ -247,6 +247,10 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
             !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
         if (diplomaticStatus == DiplomaticStatus.War) return false
+        if (civInfo.gold < 50) return false
+        civInfo.addGold(-50)
+        // The receiving civilization appreciates a funded diplomatic visit.
+        otherCiv.getDiplomacyManager(civInfo)?.addModifier(DiplomaticModifiers.GaveUsGifts, 5f)
         ambassadorMissionTurns = 5
         return true
     }
