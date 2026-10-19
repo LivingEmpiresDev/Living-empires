@@ -116,6 +116,23 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `trust recovers naturally as diplomatic betrayal decays each turn`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        val theirDiplomacy = b.getDiplomacyManager(a)!!
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDeclarationOfFriendship, -20f)
+        assertEquals(30f, ourDiplomacy.trustScore())
+        assertEquals(50f, theirDiplomacy.trustScore())
+
+        with(DiplomacyTurnManager) { ourDiplomacy.nextTurn() }
+
+        assertTrue(ourDiplomacy.trustScore() > 30f)
+        assertTrue(ourDiplomacy.trustScore() < 50f)
+        assertEquals(50f, theirDiplomacy.trustScore())
+        assertEquals(ourDiplomacy.trustScore(), ourDiplomacy.clone().trustScore())
+    }
+
+    @Test
     fun `AI embassy trust gate rejects betrayal and permits recovery`() {
         meet(a, b)
         val receivingCivDiplomacy = b.getDiplomacyManager(a)!!
