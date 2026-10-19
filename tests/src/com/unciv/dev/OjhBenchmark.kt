@@ -451,6 +451,20 @@ object OjhBenchmark {
             check(aggressor.getDiplomacyManager(defender)!!.diplomaticStatus ==
                 com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
             note("SIM scenario aiPeaceStatusSymmetry=passed")
+            // The accepted agreement must also survive diplomacy-manager
+            // cloning, as used by game-state snapshots.
+            val savedDefenderDiplomacy = acceptedDefenderManager.clone()
+            val savedAggressorDiplomacy = acceptedAggressorManager.clone()
+            check(savedDefenderDiplomacy.turnsToPeaceTreaty() ==
+                acceptedDefenderManager.turnsToPeaceTreaty())
+            check(savedAggressorDiplomacy.turnsToPeaceTreaty() ==
+                acceptedAggressorManager.turnsToPeaceTreaty())
+            check(savedDefenderDiplomacy.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            check(savedAggressorDiplomacy.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            note("SIM scenario acceptedPeaceSnapshot=passed")
+
 
 
 
