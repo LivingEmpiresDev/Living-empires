@@ -102,6 +102,19 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             diplomacyTable.add(appointButton).row()
         }
 
+        // Trust is directional: this is how the other civilization evaluates us.
+        // The score is derived from existing diplomatic betrayal history.
+        val theirTrust = otherCivDiplomacyManager.trustScore()
+        val trustDescription = when {
+            theirTrust < 20f -> "Very low"
+            theirTrust < 40f -> "Low"
+            theirTrust < 60f -> "Neutral"
+            theirTrust < 80f -> "High"
+            else -> "Very high"
+        }
+        diplomacyTable.add("Their trust in us: $trustDescription (${theirTrust.toInt()}/100)"
+            .toLabel(Color.LIGHT_GRAY)).row()
+
         val demandsButton = "Demands".toTextButton()
         demandsButton.onClick {
             diplomacyScreen.rightSideTable.clear()
