@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   pull_request:
   push:
+    branches:
+      - master
 # Keep the newest run per branch/event; superseded simulation runs waste runner time.
 concurrency:
   group: permanent-regression-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
