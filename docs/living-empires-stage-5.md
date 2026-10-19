@@ -59,3 +59,12 @@ These are approved expansion features but **not represented as already implement
 - Preserve Stage 2–4 acceptance as baseline. Require verified AI turn traces and explicit assertions for pact expiry, defensive intervention, war/peace transitions and war exhaustion; a successful turn count alone is not sufficient.
 - Continue implementing Stage 5 reputation, diplomatic missions and Android UI independently of the simulator, with targeted tests and ordinary CI for each change.
 - Do not merge Stage 5 to master until final branch-specific simulations, Android build, human gameplay acceptance and explicit approval pass.
+
+## Streamlined Stage 5 execution plan — 19 October 2026
+Use **vertical feature batches** instead of one small commit per subtask:
+1. **Embassy gameplay batch:** ambassador lifecycle + AI appointment + player-facing embassy/ambassador view and controls + focused persistence/closure tests. Reuse the existing diplomacy UI and embassy rules; do not build a parallel subsystem.
+2. **Diplomatic consequences batch:** reputation/trust modifiers + treaty-betrayal/war/peace hooks + AI valuation + player-facing explanation + scenario tests.
+3. **Diplomatic actions batch:** first ambassador mission and diplomatic demands, including cost, eligibility, duration, AI choice, save/load and UI + scenario tests.
+4. **Acceptance batch:** all Stage 2–4 regression tests, Stage 5-specific AI scenarios, 100-turn three-seed smoke tests, 500-turn stress, Android build, APK player testing and explicit merge approval.
+
+For each batch, inspect affected files and tests together, implement the gameplay slice and its assertions in one cohesive change where possible, and push once to reduce duplicate CI starts. Investigate failures and repair without requesting permission for ordinary branch changes. The permanent regression and build/test workflows now cancel superseded runs of the same event/branch; preserve the latest completed results. Do not weaken simulation assertions to gain green CI. Avoid cosmetic-only commits unless correcting a verified defect. Never merge Stage 5 into master automatically.
