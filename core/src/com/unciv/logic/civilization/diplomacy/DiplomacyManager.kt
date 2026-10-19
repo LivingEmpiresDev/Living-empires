@@ -243,14 +243,20 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
             !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
         val counterpart = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        // Mutual embassy trades collapse both directional flags into SharedEmbassies.
+        // Restore the foreign embassy explicitly before clearing the shared state.
+        val foreignEmbassyExists = counterpart.hasModifier(DiplomaticModifiers.EstablishedEmbassy) ||
+            counterpart.hasModifier(DiplomaticModifiers.SharedEmbassies)
         removeModifier(DiplomaticModifiers.EstablishedEmbassy)
         removeModifier(DiplomaticModifiers.SharedEmbassies)
         counterpart.removeModifier(DiplomaticModifiers.ReceivedEmbassy)
         counterpart.removeModifier(DiplomaticModifiers.SharedEmbassies)
-        if (counterpart.hasModifier(DiplomaticModifiers.EstablishedEmbassy))
-            counterpart.setModifier(DiplomaticModifiers.EstablishedEmbassy, 1f)
-        if (hasModifier(DiplomaticModifiers.ReceivedEmbassy))
+        if (foreignEmbassyExists) {
+            counterpart.setModifier(DiplomaticModifiers.EstablishedEmbassy, 2f)
             setModifier(DiplomaticModifiers.ReceivedEmbassy, 1f)
+        } else {
+            removeModifier(DiplomaticModifiers.ReceivedEmbassy)
+        }
         ambassadorName = null
         ambassadorMissionTurns = 0
         return true
