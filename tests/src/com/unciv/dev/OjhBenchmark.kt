@@ -441,6 +441,17 @@ object OjhBenchmark {
                 "SIM bilateral peace unexpectedly ended every multi-front war"
             }
             note("SIM scenario aiPeacePreservesOtherWars=passed")
+            // Ensure accepting the treaty does not erase the pending
+            // diplomatic relationship with the original defensive ally.
+            check(!defender.isAtWarWith(ally)) {
+                "SIM accepting AI peace unexpectedly created a war with defender's ally"
+            }
+            check(defender.getDiplomacyManager(aggressor)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            check(aggressor.getDiplomacyManager(defender)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.Peace)
+            note("SIM scenario aiPeaceStatusSymmetry=passed")
+
 
 
 
