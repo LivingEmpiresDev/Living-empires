@@ -146,7 +146,8 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             if (diplomacyScreen.isNotPlayersTurn() ||
                 diplomacyManager.ambassadorName.isNullOrBlank() ||
                 diplomacyManager.diplomaticDemandCooldown > 0 ||
-                diplomacyManager.diplomaticStatus == DiplomaticStatus.War)
+                diplomacyManager.diplomaticStatus == DiplomaticStatus.War ||
+                otherCivDiplomacyManager.diplomaticStatus == DiplomaticStatus.War)
                 demandButton.disable()
             diplomacyTable.add(demandButton).row()
             if (diplomacyManager.diplomaticDemandCooldown > 0)
