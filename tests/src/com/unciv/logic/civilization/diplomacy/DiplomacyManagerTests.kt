@@ -157,6 +157,23 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `AI defensive pact refuses severe betrayal regardless of positive opinion`() {
+        meet(a, b)
+        val ourDiplomacy = a.getDiplomacyManager(b)!!
+        // Strong positive diplomatic history cannot override a severe betrayal.
+        ourDiplomacy.setModifier(DiplomaticModifiers.YearsOfPeace, 100f)
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -40f)
+        assertEquals(10f, ourDiplomacy.trustScore())
+        assertFalse(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDefensivePact(a, b))
+
+        // Recovery above the threshold removes the trust-specific refusal.
+        ourDiplomacy.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -30f)
+        assertEquals(20f, ourDiplomacy.trustScore())
+        assertTrue(com.unciv.logic.automation.civilization.DiplomacyAutomation.wantsToSignDefensivePact(a, b))
+        assertEquals(50f, b.getDiplomacyManager(a)!!.trustScore())
+    }
+
+    @Test
     fun `AI embassy trust gate rejects betrayal and permits recovery`() {
         meet(a, b)
         val receivingCivDiplomacy = b.getDiplomacyManager(a)!!
