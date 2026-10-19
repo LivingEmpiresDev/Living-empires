@@ -23,6 +23,7 @@ object DiplomacyTurnManager {
         updateHasOpenBorders()
         nextTurnDiplomaticModifiers()
         advanceWarExhaustion()
+        if (diplomaticDemandCooldown > 0) diplomaticDemandCooldown--
         // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
         if (ambassadorMissionTurns > 0) {
             if (ambassadorName.isNullOrBlank() ||
