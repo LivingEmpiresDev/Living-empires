@@ -100,6 +100,21 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
             }
             if (diplomacyScreen.isNotPlayersTurn()) appointButton.disable()
             diplomacyTable.add(appointButton).row()
+
+            val missionButton = "Goodwill Mission (50 Gold, 5 turns)".toTextButton()
+            missionButton.onClick {
+                if (diplomacyManager.startAmbassadorGoodwillMission())
+                    diplomacyScreen.updateRightSide(otherCiv)
+            }
+            if (diplomacyScreen.isNotPlayersTurn() ||
+                diplomacyManager.ambassadorName.isNullOrBlank() ||
+                diplomacyManager.ambassadorMissionTurns > 0 ||
+                viewingCiv.gold < 50 ||
+                diplomacyManager.diplomaticStatus == DiplomaticStatus.War)
+                missionButton.disable()
+            diplomacyTable.add(missionButton).row()
+            if (diplomacyManager.ambassadorMissionTurns > 0)
+                diplomacyTable.add("Mission: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
         }
 
         // Trust is directional: this is how the other civilization evaluates us.
