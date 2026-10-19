@@ -519,6 +519,23 @@ object OjhBenchmark {
                 com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
             note("SIM scenario fullGameDiplomacySnapshot=passed")
 
+            // Exercise the real save-game serializer and loader, not just
+            // GameInfo.clone(), including transient-reference reconstruction.
+            val encodedSave = UncivFiles.gameInfoToString(scenario, forceZip = false)
+            val loadedGame = UncivFiles.gameInfoFromString(encodedSave)
+            val loadedDefender = loadedGame.getCivilization(defender.civID)
+            val loadedAggressor = loadedGame.getCivilization(aggressor.civID)
+            val loadedAlly = loadedGame.getCivilization(ally.civID)
+            check(!loadedDefender.isAtWarWith(loadedAggressor))
+            check(!loadedAggressor.isAtWarWith(loadedDefender))
+            check(loadedDefender.getDiplomacyManager(loadedAggressor)!!.turnsToPeaceTreaty() > 0)
+            check(loadedAggressor.getDiplomacyManager(loadedDefender)!!.turnsToPeaceTreaty() > 0)
+            check(loadedDefender.getDiplomacyManager(loadedAlly)!!.diplomaticStatus ==
+                com.unciv.logic.civilization.diplomacy.DiplomaticStatus.DefensivePact)
+            check(loadedAlly.isAtWarWith(loadedAggressor))
+            note("SIM scenario aiPeaceSerializationRoundTrip=passed")
+
+
 
 
 
