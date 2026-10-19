@@ -582,6 +582,46 @@ object OjhBenchmark {
             }
             note("SIM scenario aiPeaceCounterofferSafeguards=passed generated=${counter != null}")
 
+            // Process the counteroffer through the production AI trade
+            // response path, not merely the private proposal generator.
+            if (counter != null) {
+                val counterGame = UncivFiles.gameInfoFromString(
+                    UncivFiles.gameInfoToString(scenario, forceZip = false)
+                )
+                val counterAggressor = counterGame.getCivilization(aggressor.civID)
+                val counterDefender = counterGame.getCivilization(defender.civID)
+                // Restore a bilateral war in this independent game copy so
+                // the counteroffer is a valid peace negotiation.
+                val clonedPeace = counterDefender.getDiplomacyManager(counterAggressor)!!
+                clonedPeace.trades.removeAll { trade ->
+                    (trade.ourOffers + trade.theirOffers).any { it.name == Constants.peaceTreaty }
+                }
+                counterAggressor.getDiplomacyManager(counterDefender)!!.trades.removeAll { trade ->
+                    (trade.ourOffers + trade.theirOffers).any { it.name == Constants.peaceTreaty }
+                }
+                clonedPeace.declareWar()
+                check(counterDefender.isAtWarWith(counterAggressor))
+                val response = com.unciv.logic.trade.TradeRequest(
+                    defender.civID, counter.trade.clone()
+                )
+                counterAggressor.tradeRequests.add(response)
+                val pendingBefore = counterAggressor.tradeRequests.size
+                com.unciv.logic.automation.civilization.TradeAutomation.respondToTradeRequests(
+                    counterAggressor, true
+                )
+                check(counterAggressor.tradeRequests.size < pendingBefore) {
+                    "SIM AI counteroffer response was not consumed"
+                }
+                val replyCount = counterDefender.tradeRequests.count {
+                    it.requestingCiv == aggressor.civID && it.trade.isPeaceTreaty()
+                }
+                check(replyCount <= 1) {
+                    "SIM AI counteroffer processing generated duplicate peace replies"
+                }
+                note("SIM scenario aiPeaceCounterofferResponse=passed replies=$replyCount")
+            }
+
+
 
 
 
