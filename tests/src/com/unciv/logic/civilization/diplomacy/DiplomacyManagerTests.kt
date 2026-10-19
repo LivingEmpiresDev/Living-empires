@@ -96,6 +96,26 @@ class DiplomacyManagerTests {
     }
 
     @Test
+    fun `trust reflects betrayal history and stays directional after cloning`() {
+        meet(a, b)
+        val outgoing = a.getDiplomacyManager(b)!!
+        val incoming = b.getDiplomacyManager(a)!!
+        assertEquals(50f, outgoing.trustScore())
+        assertEquals(50f, incoming.trustScore())
+
+        outgoing.setModifier(DiplomaticModifiers.BetrayedDeclarationOfFriendship, -20f)
+        outgoing.setModifier(DiplomaticModifiers.BetrayedDefensivePact, -15f)
+        assertEquals(15f, outgoing.trustScore())
+        assertEquals(50f, incoming.trustScore())
+        assertEquals(15f, outgoing.clone().trustScore())
+
+        outgoing.setModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs, -100f)
+        assertEquals(0f, outgoing.trustScore())
+        outgoing.removeModifier(DiplomaticModifiers.BetrayedPromiseToNotAttackUs)
+        assertEquals(15f, outgoing.trustScore())
+    }
+
+    @Test
     fun `ambassador appointment requires an established embassy`() {
         meet(a, b)
         val diplomacy = a.getDiplomacyManager(b)!!
