@@ -129,11 +129,7 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                     diplomacyScreen.updateRightSide(otherCiv)
             }
             if (diplomacyScreen.isNotPlayersTurn() ||
-                diplomacyManager.ambassadorName.isNullOrBlank() ||
-                diplomacyManager.ambassadorMissionTurns > 0 ||
-                viewingCiv.gold < 50 ||
-                diplomacyManager.diplomaticStatus == DiplomaticStatus.War ||
-                otherCivDiplomacyManager.diplomaticStatus == DiplomaticStatus.War)
+                !diplomacyManager.canStartAmbassadorGoodwillMission())
                 missionButton.disable()
             diplomacyTable.add(missionButton).row()
             if (diplomacyManager.ambassadorMissionTurns > 0)
