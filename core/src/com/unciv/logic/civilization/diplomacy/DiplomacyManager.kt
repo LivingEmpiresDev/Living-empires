@@ -326,6 +326,25 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /** Embassy coordination with existing stationed spies, without creating a second spy system. */
+    fun canStartAmbassadorIntelligenceBriefing(): Boolean {
+        if (ambassadorMissionTurns != 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv() || civInfo.gold < 40) return false
+        if (otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus == DiplomaticStatus.War) return false
+        return civInfo.espionageManager.spyList.any { spy ->
+            spy.getCityOrNull()?.civ == otherCiv && spy.isSetUp()
+        }
+    }
+
+    /** A stationed spy supports a four-turn intelligence briefing, improving diplomatic insight. */
+    fun startAmbassadorIntelligenceBriefing(): Boolean {
+        if (!canStartAmbassadorIntelligenceBriefing()) return false
+        civInfo.addGold(-40)
+        ambassadorMissionTurns = 4
+        ambassadorMissionType = "IntelligenceBriefing"
+        return true
+    }
+
     /** Turns until another diplomatic demand may be sent to this civilization. */
     var diplomaticDemandCooldown = 0
 
