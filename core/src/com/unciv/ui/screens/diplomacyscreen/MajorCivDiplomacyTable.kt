@@ -141,8 +141,23 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                 !diplomacyManager.canStartAmbassadorTradeDelegation())
                 tradeDelegationButton.disable()
             diplomacyTable.add(tradeDelegationButton).row()
-            if (diplomacyManager.ambassadorMissionTurns > 0)
-                diplomacyTable.add("Mission: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
+            val intelligenceButton = "Intelligence Briefing (40 Gold, 4 turns)".toTextButton()
+            intelligenceButton.onClick {
+                if (diplomacyManager.startAmbassadorIntelligenceBriefing())
+                    diplomacyScreen.updateRightSide(otherCiv)
+            }
+            if (diplomacyScreen.isNotPlayersTurn() ||
+                !diplomacyManager.canStartAmbassadorIntelligenceBriefing())
+                intelligenceButton.disable()
+            diplomacyTable.add(intelligenceButton).row()
+            if (diplomacyManager.ambassadorMissionTurns > 0) {
+                val missionName = when (diplomacyManager.ambassadorMissionType) {
+                    "TradeDelegation" -> "Trade Delegation"
+                    "IntelligenceBriefing" -> "Intelligence Briefing"
+                    else -> "Goodwill Mission"
+                }
+                diplomacyTable.add("$missionName: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
+            }
             val demandButton = "Demand Tribute (25 Gold)".toTextButton()
             demandButton.onClick {
                 diplomacyManager.demandDiplomaticTribute()
