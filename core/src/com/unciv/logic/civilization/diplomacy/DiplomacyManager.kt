@@ -304,6 +304,24 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /** Embassy trade delegation: a modest, immediate investment in bilateral commerce. */
+    fun canStartAmbassadorTradeDelegation(): Boolean {
+        if (ambassadorMissionTurns != 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv() || civInfo.gold < 75) return false
+        val recipient = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        return recipient.diplomaticStatus != DiplomaticStatus.War
+    }
+
+    /** Both parties gain gold, while the sender pays the delegation's diplomatic costs. */
+    fun startAmbassadorTradeDelegation(): Boolean {
+        if (!canStartAmbassadorTradeDelegation()) return false
+        civInfo.addGold(-75)
+        civInfo.addGold(25)
+        otherCiv.addGold(25)
+        ambassadorMissionTurns = 4
+        return true
+    }
+
     /** Turns until another diplomatic demand may be sent to this civilization. */
     var diplomaticDemandCooldown = 0
 
