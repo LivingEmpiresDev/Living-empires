@@ -31,7 +31,7 @@ object DiplomacyTurnManager {
             ambassadorMissionTurns = 0
             ambassadorMissionType = ""
         }
-        // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
+        // Ambassador missions require an active ambassador and embassy; cancel on loss or war.
         if (ambassadorMissionTurns > 0) {
             val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo)
             if (ambassadorName.isNullOrBlank() ||
@@ -47,8 +47,13 @@ object DiplomacyTurnManager {
                 ambassadorMissionTurns--
                 if (ambassadorMissionTurns == 0) {
                     // Older saves have a blank type, which represents goodwill.
-                    if (ambassadorMissionType.isBlank() || ambassadorMissionType == "Goodwill")
-                        recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
+                    when (ambassadorMissionType) {
+                        "", "Goodwill" -> recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
+                        "TradeDelegation" -> {
+                            civInfo.addGold(25)
+                            otherCiv.addGold(25)
+                        }
+                    }
                     ambassadorMissionType = ""
                 }
             }
