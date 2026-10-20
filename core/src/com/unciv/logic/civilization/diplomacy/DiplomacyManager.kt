@@ -270,6 +270,12 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
             diplomaticStatus != DiplomaticStatus.War &&
             otherCiv.isAlive()
 
+    /** Shared preflight for AI and player goodwill mission controls. */
+    fun canStartAmbassadorGoodwillMission(): Boolean =
+        ambassadorMissionTurns == 0 && canUseAmbassadorForDiplomacy() &&
+            otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus != DiplomaticStatus.War &&
+            otherCiv.getDiplomacyManager(civInfo) != null && civInfo.gold >= 50
+
     /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
     var ambassadorMissionTurns = 0
 
@@ -278,7 +284,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * Mission effects and resource costs will be integrated with AI and player actions.
      */
     fun startAmbassadorGoodwillMission(): Boolean {
-        if (ambassadorMissionTurns > 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!canStartAmbassadorGoodwillMission()) return false
         val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
         if (recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War) return false
         if (civInfo.gold < 50) return false
