@@ -259,6 +259,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         }
         ambassadorName = null
         ambassadorMissionTurns = 0
+        ambassadorMissionType = ""
         return true
     }
 
@@ -288,6 +289,9 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
     /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
     var ambassadorMissionTurns = 0
 
+    /** Serialized mission discriminator; blank retains compatibility with existing goodwill saves. */
+    var ambassadorMissionType = ""
+
     /**
      * Start a time-limited diplomatic goodwill mission from an established embassy.
      * Mission effects and resource costs will be integrated with AI and player actions.
@@ -301,6 +305,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         // Reward the receiver's opinion of the sender, without overwriting existing gifts.
         recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 5f)
         ambassadorMissionTurns = 5
+        ambassadorMissionType = "Goodwill"
         return true
     }
 
@@ -319,6 +324,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         civInfo.addGold(25)
         otherCiv.addGold(25)
         ambassadorMissionTurns = 4
+        ambassadorMissionType = "TradeDelegation"
         return true
     }
 
@@ -449,6 +455,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
         toReturn.ambassadorName = ambassadorName
         toReturn.ambassadorMissionTurns = ambassadorMissionTurns
+        toReturn.ambassadorMissionType = ambassadorMissionType
         toReturn.diplomaticDemandCooldown = diplomaticDemandCooldown
         toReturn.warExhaustion = warExhaustion
         toReturn.turnsAtWar = turnsAtWar
