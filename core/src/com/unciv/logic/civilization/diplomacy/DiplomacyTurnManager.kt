@@ -29,6 +29,7 @@ object DiplomacyTurnManager {
             !hasModifier(DiplomaticModifiers.SharedEmbassies)) {
             ambassadorName = null
             ambassadorMissionTurns = 0
+            ambassadorMissionType = ""
         }
         // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
         if (ambassadorMissionTurns > 0) {
@@ -39,13 +40,17 @@ object DiplomacyTurnManager {
                 diplomaticStatus == DiplomaticStatus.War ||
                 recipientDiplomacy == null ||
                 recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War)
+            {
                 ambassadorMissionTurns = 0
-            else {
+                ambassadorMissionType = ""
+            } else {
                 ambassadorMissionTurns--
-                // The initial goodwill bonus is awarded when the mission starts.
-                // Only a mission that survives its full duration earns completion goodwill.
-                if (ambassadorMissionTurns == 0)
-                    recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
+                if (ambassadorMissionTurns == 0) {
+                    // Older saves have a blank type, which represents goodwill.
+                    if (ambassadorMissionType.isBlank() || ambassadorMissionType == "Goodwill")
+                        recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
+                    ambassadorMissionType = ""
+                }
             }
         }
         nextTurnFlags()
