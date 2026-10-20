@@ -153,12 +153,17 @@ object DiplomacyAutomation {
             if (missionsStarted >= 1) break
             if (!otherCiv.isMajorCiv() || !otherCiv.isAlive()) continue
             val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
-            if (!diplomacy.canStartAmbassadorGoodwillMission()) continue
             if (diplomacy.trustScore() < 20f || diplomacy.diplomaticStatus == DiplomaticStatus.War) continue
             if ((otherCiv.getDiplomacyManager(civInfo)?.trustScore() ?: 0f) < 20f) continue
             val rng = diplomacy.state.stateBasedRandom("DiplomacyAutomation.ambassadorGoodwillMission")
             if ((1..10).random(rng) <= 8) continue
-            if (diplomacy.startAmbassadorGoodwillMission()) missionsStarted++
+            // Prefer commercial cooperation when reserves permit; otherwise seek goodwill.
+            val started = if (civInfo.gold >= 200 && diplomacy.canStartAmbassadorTradeDelegation())
+                diplomacy.startAmbassadorTradeDelegation()
+            else if (diplomacy.canStartAmbassadorGoodwillMission())
+                diplomacy.startAmbassadorGoodwillMission()
+            else false
+            if (started) missionsStarted++
         }
     }
 
