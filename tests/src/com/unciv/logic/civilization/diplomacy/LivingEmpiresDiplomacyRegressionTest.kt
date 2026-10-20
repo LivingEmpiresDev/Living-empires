@@ -234,6 +234,23 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(9, clone.diplomaticDemandCooldown)
     }
 
+    @Test fun stageSixDiplomaticActionsRejectMissingAmbassadorWithoutCooldown() {
+        val manager = DiplomacyManager()
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertFalse(manager.demandDiplomaticTribute())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        assertEquals(0, manager.diplomaticDemandCooldown)
+    }
+
+    @Test fun stageSixDiplomaticActionsRejectMissingEmbassyWithoutCooldown() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertFalse(manager.demandDiplomaticTribute())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        assertEquals(0, manager.diplomaticDemandCooldown)
+    }
+
     @Test fun stageSixMissionProgressRemainsIndependentAfterClone() {
         val original = DiplomacyManager()
         DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
