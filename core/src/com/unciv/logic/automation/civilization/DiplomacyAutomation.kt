@@ -153,7 +153,7 @@ object DiplomacyAutomation {
             if (missionsStarted >= 1) break
             if (!otherCiv.isMajorCiv() || !otherCiv.isAlive()) continue
             val diplomacy = civInfo.getDiplomacyManager(otherCiv) ?: continue
-            if (diplomacy.ambassadorName.isNullOrBlank() || diplomacy.ambassadorMissionTurns > 0) continue
+            if (!diplomacy.canStartAmbassadorGoodwillMission()) continue
             if (diplomacy.trustScore() < 20f || diplomacy.diplomaticStatus == DiplomaticStatus.War) continue
             if ((otherCiv.getDiplomacyManager(civInfo)?.trustScore() ?: 0f) < 20f) continue
             val rng = diplomacy.state.stateBasedRandom("DiplomacyAutomation.ambassadorGoodwillMission")
