@@ -129,23 +129,42 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                     diplomacyScreen.updateRightSide(otherCiv)
             }
             if (diplomacyScreen.isNotPlayersTurn() ||
-                diplomacyManager.ambassadorName.isNullOrBlank() ||
-                diplomacyManager.ambassadorMissionTurns > 0 ||
-                viewingCiv.gold < 50 ||
-                diplomacyManager.diplomaticStatus == DiplomaticStatus.War)
+                !diplomacyManager.canStartAmbassadorGoodwillMission())
                 missionButton.disable()
             diplomacyTable.add(missionButton).row()
-            if (diplomacyManager.ambassadorMissionTurns > 0)
-                diplomacyTable.add("Mission: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
+            val tradeDelegationButton = "Trade Delegation (75 Gold, 4 turns)".toTextButton()
+            tradeDelegationButton.onClick {
+                if (diplomacyManager.startAmbassadorTradeDelegation())
+                    diplomacyScreen.updateRightSide(otherCiv)
+            }
+            if (diplomacyScreen.isNotPlayersTurn() ||
+                !diplomacyManager.canStartAmbassadorTradeDelegation())
+                tradeDelegationButton.disable()
+            diplomacyTable.add(tradeDelegationButton).row()
+            val intelligenceButton = "Intelligence Briefing (40 Gold, 4 turns)".toTextButton()
+            intelligenceButton.onClick {
+                if (diplomacyManager.startAmbassadorIntelligenceBriefing())
+                    diplomacyScreen.updateRightSide(otherCiv)
+            }
+            if (diplomacyScreen.isNotPlayersTurn() ||
+                !diplomacyManager.canStartAmbassadorIntelligenceBriefing())
+                intelligenceButton.disable()
+            diplomacyTable.add(intelligenceButton).row()
+            if (diplomacyManager.ambassadorMissionTurns > 0) {
+                val missionName = when (diplomacyManager.ambassadorMissionType) {
+                    "TradeDelegation" -> "Trade Delegation"
+                    "IntelligenceBriefing" -> "Intelligence Briefing"
+                    else -> "Goodwill Mission"
+                }
+                diplomacyTable.add("$missionName: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
+            }
             val demandButton = "Demand Tribute (25 Gold)".toTextButton()
             demandButton.onClick {
                 diplomacyManager.demandDiplomaticTribute()
                 diplomacyScreen.updateRightSide(otherCiv)
             }
             if (diplomacyScreen.isNotPlayersTurn() ||
-                diplomacyManager.ambassadorName.isNullOrBlank() ||
-                diplomacyManager.diplomaticDemandCooldown > 0 ||
-                diplomacyManager.diplomaticStatus == DiplomaticStatus.War)
+                !diplomacyManager.canDemandDiplomaticTribute())
                 demandButton.disable()
             diplomacyTable.add(demandButton).row()
             if (diplomacyManager.diplomaticDemandCooldown > 0)

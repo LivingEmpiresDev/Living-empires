@@ -248,10 +248,9 @@ class Spy private constructor() : IsPartOfGameInfoSerialization {
             addNotification("Your spy [$name] was killed trying to steal Technology in [$city]!")
             defendingSpy?.levelUpSpy()
             killSpy()
-            // if they kill your spy they should know that you are spying on them and able to demande to not be speid on.
-            demandToNotBeSpiedOn(otherCiv)
         } else startStealingTech()  // reset progress
 
+        // A detected operation has one diplomatic consequence, even when the spy dies.
         if (spyResult >= 100) demandToNotBeSpiedOn(otherCiv)
     }
     

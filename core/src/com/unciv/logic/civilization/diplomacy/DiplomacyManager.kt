@@ -259,21 +259,45 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         }
         ambassadorName = null
         ambassadorMissionTurns = 0
+        ambassadorMissionType = ""
         return true
+    }
+
+    /** Common embassy eligibility for ambassador-led diplomatic actions. */
+    private fun canUseAmbassadorForDiplomacy(): Boolean =
+        !ambassadorName.isNullOrBlank() &&
+            (hasModifier(DiplomaticModifiers.EstablishedEmbassy) ||
+                hasModifier(DiplomaticModifiers.SharedEmbassies)) &&
+            diplomaticStatus != DiplomaticStatus.War &&
+            otherCiv.isAlive()
+
+    /** Shared preflight for AI and player goodwill mission controls. */
+    fun canStartAmbassadorGoodwillMission(): Boolean {
+        if (ambassadorMissionTurns != 0 || !canUseAmbassadorForDiplomacy()) return false
+        val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        return recipientDiplomacy.diplomaticStatus != DiplomaticStatus.War && civInfo.gold >= 50
+    }
+
+    /** Shared preflight for tribute demands, including bilateral peace and cooldown. */
+    fun canDemandDiplomaticTribute(): Boolean {
+        if (diplomaticDemandCooldown > 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
+        val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        return receiver.diplomaticStatus != DiplomaticStatus.War
     }
 
     /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
     var ambassadorMissionTurns = 0
+
+    /** Serialized mission discriminator; blank retains compatibility with existing goodwill saves. */
+    var ambassadorMissionType = ""
 
     /**
      * Start a time-limited diplomatic goodwill mission from an established embassy.
      * Mission effects and resource costs will be integrated with AI and player actions.
      */
     fun startAmbassadorGoodwillMission(): Boolean {
-        if (ambassadorMissionTurns > 0 || ambassadorName.isNullOrBlank()) return false
-        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
-            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
-        if (diplomaticStatus == DiplomaticStatus.War) return false
+        if (!canStartAmbassadorGoodwillMission()) return false
         val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
         if (recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War) return false
         if (civInfo.gold < 50) return false
@@ -281,6 +305,43 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         // Reward the receiver's opinion of the sender, without overwriting existing gifts.
         recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 5f)
         ambassadorMissionTurns = 5
+        ambassadorMissionType = "Goodwill"
+        return true
+    }
+
+    /** Embassy trade delegation: a modest, immediate investment in bilateral commerce. */
+    fun canStartAmbassadorTradeDelegation(): Boolean {
+        if (ambassadorMissionTurns != 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv() || civInfo.gold < 75) return false
+        val recipient = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        return recipient.diplomaticStatus != DiplomaticStatus.War
+    }
+
+    /** Invest in a delegation; commercial proceeds are paid only after four peaceful turns. */
+    fun startAmbassadorTradeDelegation(): Boolean {
+        if (!canStartAmbassadorTradeDelegation()) return false
+        civInfo.addGold(-75)
+        ambassadorMissionTurns = 4
+        ambassadorMissionType = "TradeDelegation"
+        return true
+    }
+
+    /** Embassy coordination with existing stationed spies, without creating a second spy system. */
+    fun canStartAmbassadorIntelligenceBriefing(): Boolean {
+        if (ambassadorMissionTurns != 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv() || civInfo.gold < 40) return false
+        if (otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus == DiplomaticStatus.War) return false
+        return civInfo.espionageManager.spyList.any { spy ->
+            spy.getCityOrNull()?.civ == otherCiv && spy.isSetUp()
+        }
+    }
+
+    /** A stationed spy supports a four-turn intelligence briefing, improving diplomatic insight. */
+    fun startAmbassadorIntelligenceBriefing(): Boolean {
+        if (!canStartAmbassadorIntelligenceBriefing()) return false
+        civInfo.addGold(-40)
+        ambassadorMissionTurns = 4
+        ambassadorMissionType = "IntelligenceBriefing"
         return true
     }
 
@@ -292,13 +353,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * triggers a cooldown to prevent repeated demands within the same turn.
      */
     fun demandDiplomaticTribute(): Boolean {
-        if (diplomaticDemandCooldown > 0 || diplomaticStatus == DiplomaticStatus.War) return false
-        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
-        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
-            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
-        if (ambassadorName.isNullOrBlank()) return false
+        if (!canDemandDiplomaticTribute()) return false
         val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
-        if (receiver.diplomaticStatus == DiplomaticStatus.War) return false
         diplomaticDemandCooldown = 10
         if (otherCiv.gold < 25 || receiver.trustScore() < 20f ||
             receiver.opinionOfOtherCiv() < 30f) {
@@ -416,6 +472,7 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         toReturn.diplomaticModifiers.putAll(diplomaticModifiers)
         toReturn.ambassadorName = ambassadorName
         toReturn.ambassadorMissionTurns = ambassadorMissionTurns
+        toReturn.ambassadorMissionType = ambassadorMissionType
         toReturn.diplomaticDemandCooldown = diplomaticDemandCooldown
         toReturn.warExhaustion = warExhaustion
         toReturn.turnsAtWar = turnsAtWar

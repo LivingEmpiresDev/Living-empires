@@ -14,9 +14,14 @@ class EspionageAutomation(val civInfo: Civilization) {
     }
 
     private val getCivsToStealFromSorted: List<Civilization> =
-        civsToStealFrom.sortedBy { otherCiv -> civInfo.espionageManager.spyList
-            .count { it.isDoingWork() && it.getCityOrNull()?.civ == otherCiv }
-        }
+        civsToStealFrom.sortedWith(compareBy<Civilization> { otherCiv ->
+            civInfo.espionageManager.spyList.count { it.isDoingWork() && it.getCityOrNull()?.civ == otherCiv }
+        }.thenByDescending { otherCiv ->
+            val diplomacy = civInfo.getDiplomacyManager(otherCiv)
+            diplomacy?.ambassadorName != null &&
+                (diplomacy.hasModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.EstablishedEmbassy) ||
+                    diplomacy.hasModifier(com.unciv.logic.civilization.diplomacy.DiplomaticModifiers.SharedEmbassies))
+        })
 
     private val cityStatesToRig: List<Civilization> by lazy {
         civInfo.getKnownCivs().filter { otherCiv -> otherCiv.isMinorCiv() && otherCiv.knows(civInfo) && !civInfo.isAtWarWith(otherCiv) }.toList()

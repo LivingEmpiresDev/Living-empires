@@ -188,4 +188,156 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals(4, original.ambassadorMissionTurns)
         assertEquals(9, original.diplomaticDemandCooldown)
     }
+
+    @Test fun stageSixGoodwillMissionRequiresAppointedAmbassador() {
+        val manager = DiplomacyManager()
+        // Eligibility checks must reject absent ambassadors before accessing game transients.
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        manager.ambassadorName = "Envoy"
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(0, manager.ambassadorMissionTurns)
+    }
+
+    @Test fun stageSixEmbassyWithdrawalCancelsMissionWithoutAffectingOtherMissionState() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 3
+        manager.diplomaticDemandCooldown = 7
+        // A mission without an embassy cannot be started, even with a named envoy.
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(3, manager.ambassadorMissionTurns)
+        assertEquals(7, manager.diplomaticDemandCooldown)
+    }
+
+    @Test fun stageSixMissionCannotRestartWhileAlreadyActive() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 5
+        // Active-mission guard must run before accessing civilization transients.
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertEquals(5, manager.ambassadorMissionTurns)
+    }
+
+    @Test fun stageSixMissionAndDemandCooldownCloneIndependently() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorName = "Envoy"
+        original.ambassadorMissionTurns = 5
+        original.diplomaticDemandCooldown = 10
+        val clone = original.clone()
+        clone.ambassadorMissionTurns--
+        clone.diplomaticDemandCooldown--
+        assertEquals(5, original.ambassadorMissionTurns)
+        assertEquals(10, original.diplomaticDemandCooldown)
+        assertEquals(4, clone.ambassadorMissionTurns)
+        assertEquals(9, clone.diplomaticDemandCooldown)
+    }
+
+    @Test fun stageSixDiplomaticActionsRejectMissingAmbassadorWithoutCooldown() {
+        val manager = DiplomacyManager()
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertFalse(manager.demandDiplomaticTribute())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        assertEquals(0, manager.diplomaticDemandCooldown)
+    }
+
+    @Test fun stageSixDiplomaticActionsRejectMissingEmbassyWithoutCooldown() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        assertFalse(manager.startAmbassadorGoodwillMission())
+        assertFalse(manager.demandDiplomaticTribute())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        assertEquals(0, manager.diplomaticDemandCooldown)
+    }
+
+    @Test fun stageSixTradeDelegationRequiresEmbassyAndAmbassador() {
+        val manager = DiplomacyManager()
+        assertFalse(manager.startAmbassadorTradeDelegation())
+        manager.ambassadorName = "Envoy"
+        assertFalse(manager.startAmbassadorTradeDelegation())
+        assertEquals(0, manager.ambassadorMissionTurns)
+        assertEquals("", manager.ambassadorMissionType)
+    }
+
+    @Test fun stageSixTradeDelegationTypeSurvivesCloneIndependently() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorMissionTurns = 4
+        original.ambassadorMissionType = "TradeDelegation"
+        val copy = original.clone()
+        assertEquals("TradeDelegation", copy.ambassadorMissionType)
+        assertEquals(4, copy.ambassadorMissionTurns)
+        copy.ambassadorMissionType = "Goodwill"
+        assertEquals("TradeDelegation", original.ambassadorMissionType)
+    }
+
+    @Test fun stageSixGoodwillAndTradeMissionTypesRemainDistinctAfterClone() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorMissionTurns = 5
+        original.ambassadorMissionType = "Goodwill"
+        val copy = original.clone()
+        assertEquals("Goodwill", copy.ambassadorMissionType)
+        copy.ambassadorMissionType = "TradeDelegation"
+        copy.ambassadorMissionTurns = 4
+        assertEquals("Goodwill", original.ambassadorMissionType)
+        assertEquals(5, original.ambassadorMissionTurns)
+        assertEquals("TradeDelegation", copy.ambassadorMissionType)
+    }
+
+    @Test fun stageSixTradeDelegationCannotRestartDuringExistingMission() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 4
+        manager.ambassadorMissionType = "TradeDelegation"
+        assertFalse(manager.canStartAmbassadorTradeDelegation())
+        assertFalse(manager.startAmbassadorTradeDelegation())
+        assertFalse(manager.canStartAmbassadorGoodwillMission())
+        assertEquals(4, manager.ambassadorMissionTurns)
+        assertEquals("TradeDelegation", manager.ambassadorMissionType)
+    }
+
+    @Test fun stageSixIntelligenceBriefingRequiresExistingEmbassyAndSpy() {
+        val manager = DiplomacyManager()
+        assertFalse(manager.canStartAmbassadorIntelligenceBriefing())
+        assertFalse(manager.startAmbassadorIntelligenceBriefing())
+        manager.ambassadorName = "Envoy"
+        assertFalse(manager.canStartAmbassadorIntelligenceBriefing())
+        assertEquals(0, manager.ambassadorMissionTurns)
+    }
+
+    @Test fun stageSixIntelligenceBriefingCannotOverlapAnotherMission() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 4
+        manager.ambassadorMissionType = "IntelligenceBriefing"
+        assertFalse(manager.canStartAmbassadorIntelligenceBriefing())
+        assertFalse(manager.startAmbassadorIntelligenceBriefing())
+        assertFalse(manager.canStartAmbassadorTradeDelegation())
+        assertEquals("IntelligenceBriefing", manager.ambassadorMissionType)
+    }
+
+    @Test fun stageSixIntelligenceBriefingStateSurvivesClone() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorMissionTurns = 4
+        original.ambassadorMissionType = "IntelligenceBriefing"
+        val copy = original.clone()
+        assertEquals(4, copy.ambassadorMissionTurns)
+        assertEquals("IntelligenceBriefing", copy.ambassadorMissionType)
+        copy.ambassadorMissionTurns--
+        assertEquals(4, original.ambassadorMissionTurns)
+    }
+
+    @Test fun stageSixMissionProgressRemainsIndependentAfterClone() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorName = "Envoy"
+        original.ambassadorMissionTurns = 1
+        val copy = original.clone()
+        copy.ambassadorMissionTurns = 0
+        assertEquals(1, original.ambassadorMissionTurns)
+        assertEquals(0, copy.ambassadorMissionTurns)
+    }
 }

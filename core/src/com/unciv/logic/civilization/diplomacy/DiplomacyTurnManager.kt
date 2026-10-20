@@ -29,16 +29,39 @@ object DiplomacyTurnManager {
             !hasModifier(DiplomaticModifiers.SharedEmbassies)) {
             ambassadorName = null
             ambassadorMissionTurns = 0
+            ambassadorMissionType = ""
         }
-        // Goodwill missions require an active ambassador and embassy; cancel on loss or war.
+        // Ambassador missions require an active ambassador and embassy; cancel on loss or war.
         if (ambassadorMissionTurns > 0) {
+            val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo)
             if (ambassadorName.isNullOrBlank() ||
                 (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
                     !hasModifier(DiplomaticModifiers.SharedEmbassies)) ||
-                diplomaticStatus == DiplomaticStatus.War)
+                diplomaticStatus == DiplomaticStatus.War ||
+                recipientDiplomacy == null ||
+                recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War)
+            {
                 ambassadorMissionTurns = 0
-            else
+                ambassadorMissionType = ""
+            } else {
                 ambassadorMissionTurns--
+                if (ambassadorMissionTurns == 0) {
+                    // Older saves have a blank type, which represents goodwill.
+                    when (ambassadorMissionType) {
+                        "", "Goodwill" -> recipientDiplomacy.addModifier(DiplomaticModifiers.GaveUsGifts, 3f)
+                        "TradeDelegation" -> {
+                            civInfo.addGold(25)
+                            otherCiv.addGold(25)
+                        }
+                        "IntelligenceBriefing" -> {
+                            // Spy operations remain owned by Unciv's espionage system.
+                            // Briefings give a small, temporary diplomatic intelligence benefit.
+                            addModifier(DiplomaticModifiers.GaveUsGifts, 2f)
+                        }
+                    }
+                    ambassadorMissionType = ""
+                }
+            }
         }
         nextTurnFlags()
         if (civInfo.isCityState && otherCiv.isMajorCiv())
