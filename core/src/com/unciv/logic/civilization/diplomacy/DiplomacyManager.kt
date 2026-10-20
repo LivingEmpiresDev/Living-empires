@@ -317,12 +317,10 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return recipient.diplomaticStatus != DiplomaticStatus.War
     }
 
-    /** Both parties gain gold, while the sender pays the delegation's diplomatic costs. */
+    /** Invest in a delegation; commercial proceeds are paid only after four peaceful turns. */
     fun startAmbassadorTradeDelegation(): Boolean {
         if (!canStartAmbassadorTradeDelegation()) return false
         civInfo.addGold(-75)
-        civInfo.addGold(25)
-        otherCiv.addGold(25)
         ambassadorMissionTurns = 4
         ambassadorMissionType = "TradeDelegation"
         return true
