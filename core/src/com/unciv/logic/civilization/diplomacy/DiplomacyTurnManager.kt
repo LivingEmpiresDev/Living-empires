@@ -53,6 +53,11 @@ object DiplomacyTurnManager {
                             civInfo.addGold(25)
                             otherCiv.addGold(25)
                         }
+                        "IntelligenceBriefing" -> {
+                            // Spy operations remain owned by Unciv's espionage system.
+                            // Briefings give a small, temporary diplomatic intelligence benefit.
+                            addModifier(DiplomaticModifiers.GaveUsGifts, 2f)
+                        }
                     }
                     ambassadorMissionType = ""
                 }
