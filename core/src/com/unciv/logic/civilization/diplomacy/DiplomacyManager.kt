@@ -276,6 +276,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         if (diplomaticStatus == DiplomaticStatus.War) return false
         val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
         if (recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War) return false
+        // Never spend mission funds or grant goodwill to a defeated civilization.
+        if (!otherCiv.isAlive()) return false
         if (civInfo.gold < 50) return false
         civInfo.addGold(-50)
         // Reward the receiver's opinion of the sender, without overwriting existing gifts.
