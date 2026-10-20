@@ -272,6 +272,32 @@ class LivingEmpiresDiplomacyRegressionTest {
         assertEquals("TradeDelegation", original.ambassadorMissionType)
     }
 
+    @Test fun stageSixGoodwillAndTradeMissionTypesRemainDistinctAfterClone() {
+        val original = DiplomacyManager()
+        DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
+        original.ambassadorMissionTurns = 5
+        original.ambassadorMissionType = "Goodwill"
+        val copy = original.clone()
+        assertEquals("Goodwill", copy.ambassadorMissionType)
+        copy.ambassadorMissionType = "TradeDelegation"
+        copy.ambassadorMissionTurns = 4
+        assertEquals("Goodwill", original.ambassadorMissionType)
+        assertEquals(5, original.ambassadorMissionTurns)
+        assertEquals("TradeDelegation", copy.ambassadorMissionType)
+    }
+
+    @Test fun stageSixTradeDelegationCannotRestartDuringExistingMission() {
+        val manager = DiplomacyManager()
+        manager.ambassadorName = "Envoy"
+        manager.ambassadorMissionTurns = 4
+        manager.ambassadorMissionType = "TradeDelegation"
+        assertFalse(manager.canStartAmbassadorTradeDelegation())
+        assertFalse(manager.startAmbassadorTradeDelegation())
+        assertFalse(manager.canStartAmbassadorGoodwillMission())
+        assertEquals(4, manager.ambassadorMissionTurns)
+        assertEquals("TradeDelegation", manager.ambassadorMissionType)
+    }
+
     @Test fun stageSixMissionProgressRemainsIndependentAfterClone() {
         val original = DiplomacyManager()
         DiplomacyManager::class.java.getDeclaredField("otherCivName").apply { isAccessible = true }.set(original, "RegressionOpponent")
