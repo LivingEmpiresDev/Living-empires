@@ -262,6 +262,14 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
         return true
     }
 
+    /** Common embassy eligibility for ambassador-led diplomatic actions. */
+    private fun canUseAmbassadorForDiplomacy(): Boolean =
+        !ambassadorName.isNullOrBlank() &&
+            (hasModifier(DiplomaticModifiers.EstablishedEmbassy) ||
+                hasModifier(DiplomaticModifiers.SharedEmbassies)) &&
+            diplomaticStatus != DiplomaticStatus.War &&
+            otherCiv.isAlive()
+
     /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
     var ambassadorMissionTurns = 0
 
@@ -270,14 +278,9 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * Mission effects and resource costs will be integrated with AI and player actions.
      */
     fun startAmbassadorGoodwillMission(): Boolean {
-        if (ambassadorMissionTurns > 0 || ambassadorName.isNullOrBlank()) return false
-        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
-            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
-        if (diplomaticStatus == DiplomaticStatus.War) return false
+        if (ambassadorMissionTurns > 0 || !canUseAmbassadorForDiplomacy()) return false
         val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
         if (recipientDiplomacy.diplomaticStatus == DiplomaticStatus.War) return false
-        // Never spend mission funds or grant goodwill to a defeated civilization.
-        if (!otherCiv.isAlive()) return false
         if (civInfo.gold < 50) return false
         civInfo.addGold(-50)
         // Reward the receiver's opinion of the sender, without overwriting existing gifts.
@@ -294,15 +297,10 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * triggers a cooldown to prevent repeated demands within the same turn.
      */
     fun demandDiplomaticTribute(): Boolean {
-        if (diplomaticDemandCooldown > 0 || diplomaticStatus == DiplomaticStatus.War) return false
+        if (diplomaticDemandCooldown > 0 || !canUseAmbassadorForDiplomacy()) return false
         if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
-        if (!hasModifier(DiplomaticModifiers.EstablishedEmbassy) &&
-            !hasModifier(DiplomaticModifiers.SharedEmbassies)) return false
-        if (ambassadorName.isNullOrBlank()) return false
         val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
         if (receiver.diplomaticStatus == DiplomaticStatus.War) return false
-        // A tribute demand requires a living counterpart; avoid consuming cooldown on a dead civilization.
-        if (!otherCiv.isAlive()) return false
         diplomaticDemandCooldown = 10
         if (otherCiv.gold < 25 || receiver.trustScore() < 20f ||
             receiver.opinionOfOtherCiv() < 30f) {
