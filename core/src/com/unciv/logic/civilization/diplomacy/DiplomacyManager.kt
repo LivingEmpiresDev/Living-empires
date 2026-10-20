@@ -271,10 +271,19 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
             otherCiv.isAlive()
 
     /** Shared preflight for AI and player goodwill mission controls. */
-    fun canStartAmbassadorGoodwillMission(): Boolean =
-        ambassadorMissionTurns == 0 && canUseAmbassadorForDiplomacy() &&
-            otherCiv.getDiplomacyManager(civInfo)?.diplomaticStatus != DiplomaticStatus.War &&
-            otherCiv.getDiplomacyManager(civInfo) != null && civInfo.gold >= 50
+    fun canStartAmbassadorGoodwillMission(): Boolean {
+        if (ambassadorMissionTurns != 0 || !canUseAmbassadorForDiplomacy()) return false
+        val recipientDiplomacy = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        return recipientDiplomacy.diplomaticStatus != DiplomaticStatus.War && civInfo.gold >= 50
+    }
+
+    /** Shared preflight for tribute demands, including bilateral peace and cooldown. */
+    fun canDemandDiplomaticTribute(): Boolean {
+        if (diplomaticDemandCooldown > 0 || !canUseAmbassadorForDiplomacy()) return false
+        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
+        val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
+        return receiver.diplomaticStatus != DiplomaticStatus.War
+    }
 
     /** Remaining turns of a diplomatic goodwill mission. Zero means no active mission. */
     var ambassadorMissionTurns = 0
@@ -303,10 +312,8 @@ class DiplomacyManager() : IsPartOfGameInfoSerialization {
      * triggers a cooldown to prevent repeated demands within the same turn.
      */
     fun demandDiplomaticTribute(): Boolean {
-        if (diplomaticDemandCooldown > 0 || !canUseAmbassadorForDiplomacy()) return false
-        if (!civInfo.isMajorCiv() || !otherCiv.isMajorCiv()) return false
+        if (!canDemandDiplomaticTribute()) return false
         val receiver = otherCiv.getDiplomacyManager(civInfo) ?: return false
-        if (receiver.diplomaticStatus == DiplomaticStatus.War) return false
         diplomaticDemandCooldown = 10
         if (otherCiv.gold < 25 || receiver.trustScore() < 20f ||
             receiver.opinionOfOtherCiv() < 30f) {
