@@ -132,6 +132,15 @@ class MajorCivDiplomacyTable(private val diplomacyScreen: DiplomacyScreen) {
                 !diplomacyManager.canStartAmbassadorGoodwillMission())
                 missionButton.disable()
             diplomacyTable.add(missionButton).row()
+            val tradeDelegationButton = "Trade Delegation (75 Gold, 4 turns)".toTextButton()
+            tradeDelegationButton.onClick {
+                if (diplomacyManager.startAmbassadorTradeDelegation())
+                    diplomacyScreen.updateRightSide(otherCiv)
+            }
+            if (diplomacyScreen.isNotPlayersTurn() ||
+                !diplomacyManager.canStartAmbassadorTradeDelegation())
+                tradeDelegationButton.disable()
+            diplomacyTable.add(tradeDelegationButton).row()
             if (diplomacyManager.ambassadorMissionTurns > 0)
                 diplomacyTable.add("Mission: ${diplomacyManager.ambassadorMissionTurns} turns remaining".toLabel(Color.LIGHT_GRAY)).row()
             val demandButton = "Demand Tribute (25 Gold)".toTextButton()
